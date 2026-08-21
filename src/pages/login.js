@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Layout from '@theme/Layout';
+import Head from '@docusaurus/Head';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -82,18 +82,30 @@ function LoginForm({ firebaseConfig }) {
   );
 }
 
+// Deliberately does NOT use <Layout> — the site navbar links to protected
+// pages, and Docusaurus navigates those client-side (no new HTTP request),
+// which would let an unauthenticated visitor click straight past the login
+// gate without ever hitting the server-side proxy check. A bare page with
+// no in-app links closes that off.
 export default function Login() {
   const {
-    siteConfig: { customFields },
+    siteConfig: { customFields, title },
   } = useDocusaurusContext();
 
   return (
-    <Layout title="Log in" description="Sign in to the Ozi AdMob SDK docs">
+    <>
+      <Head>
+        <title>Sign in · {title}</title>
+      </Head>
       <main className={styles.main}>
+        <div className={styles.brand}>
+          <img src="/img/logo.svg" alt="" className={styles.brandLogo} />
+          <span>{title}</span>
+        </div>
         <BrowserOnly fallback={<div className={styles.card} />}>
           {() => <LoginForm firebaseConfig={customFields.firebaseConfig} />}
         </BrowserOnly>
       </main>
-    </Layout>
+    </>
   );
 }
