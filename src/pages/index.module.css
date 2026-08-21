@@ -1,0 +1,115 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 5.5rem 0 5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-dark) 65%, var(--ifm-color-primary-darker) 100%);
+}
+
+.heroBanner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 40%, transparent 100%);
+  pointer-events: none;
+}
+
+.heroGlow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.heroGlowOne {
+  composes: heroGlow;
+  width: 360px;
+  height: 360px;
+  top: -140px;
+  right: -80px;
+  background: rgba(255, 201, 77, 0.35);
+}
+
+.heroGlowTwo {
+  composes: heroGlow;
+  width: 300px;
+  height: 300px;
+  bottom: -160px;
+  left: -60px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.heroContent {
+  position: relative;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.25rem;
+}
+
+.eyebrowDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffc94d;
+  flex: none;
+}
+
+.heroBanner :global(.hero__title) {
+  color: #fff;
+  font-size: 3rem;
+}
+
+.heroBanner :global(.hero__subtitle) {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 1.2rem;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3.5rem 1.5rem;
+  }
+  .heroBanner :global(.hero__title) {
+    font-size: 2.2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.buttons :global(.button--outline) {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.buttons :global(.button--outline:hover) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+}

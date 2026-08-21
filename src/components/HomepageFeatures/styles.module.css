@@ -1,0 +1,12 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 3rem 0 4rem;
+  width: 100%;
+}
+
+.icon {
+  height: 64px;
+  width: 64px;
+  color: var(--ifm-color-primary);
+}

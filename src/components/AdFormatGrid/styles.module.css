@@ -1,0 +1,73 @@
+.section {
+  padding: 1rem 0 5rem;
+}
+
+.headingWrap {
+  text-align: center;
+  max-width: 560px;
+  margin: 0 auto 2.5rem;
+}
+
+.heading {
+  margin-bottom: 0.5rem;
+}
+
+.subheading {
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1.25rem 1.75rem;
+  border-radius: 16px;
+  border: 1px solid var(--ozi-border);
+  background: var(--ifm-background-surface-color, var(--ozi-surface));
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ozi-shadow);
+  border-color: transparent;
+  text-decoration: none;
+}
+
+.iconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  margin-bottom: 0.4rem;
+}
+
+.cardIcon {
+  width: 34px;
+  height: 34px;
+}
+
+.cardTitle {
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ifm-font-color-base);
+  text-align: center;
+}
+
+.cardBlurb {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
+  text-align: center;
+  line-height: 1.4;
+}

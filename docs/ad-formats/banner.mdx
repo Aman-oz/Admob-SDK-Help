@@ -1,0 +1,125 @@
+---
+sidebar_position: 5
+title: Banner Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="banner"
+  title="Banner Ads"
+  description="A persistent, small ad anchored to part of the screen. Three variants share one loader — pick per screen, not per app." />
+
+```kotlin
+val bannerAdLoader = AdMobManager.getInstance(application).bannerAdLoader
+```
+
+## Use the placement-key methods
+
+Every banner call in the sample app (`BannerActivity.kt`) uses a placement key
+plus a `point` identifying that specific screen/slot, and a `timeoutMillis` so
+a slow-loading ad doesn't hang the layout indefinitely. All three variants
+take a `FrameLayout` to render into and an optional `ShimmerFrameLayout` to
+show while loading — pass `null` for the shimmer if your layout doesn't have
+one (as the sample does throughout).
+
+## Which variant
+
+| Variant | Use when |
+|---|---|
+| **Adaptive** | Default choice for content screens (home, list, details) — auto-sizes to screen width, Google's recommendation |
+| **Medium rectangle (MREC)** | Blog/article readers, news feeds, content-heavy screens — 300×250, higher CTR, takes more space |
+| **Collapsible** | Screens with limited vertical space — collapses to save room; anchor `isTop` to the edge it should collapse toward |
+
+```kotlin
+// Adaptive — recommended default
+adMobManager.bannerAdLoader.showAdaptiveBannerForPlacement(
+    this,
+    null, // no shimmer
+    binding.flBannerAd,
+    AdPlacementKeys.HOME_BANNER,
+    point = "adaptive_banner",
+    timeoutMillis = 5000
+) { loaded -> }
+
+// Medium rectangle
+adMobManager.bannerAdLoader.showMemRecBannerForPlacement(
+    this,
+    binding.flBannerAd,
+    null, // no shimmer
+    AdPlacementKeys.EXIT_APP_BANNER,
+    point = "medium_rectangle",
+    timeoutMillis = 4000
+) { loaded -> }
+
+// Collapsible — anchored to the top
+adMobManager.bannerAdLoader.showCollapsableBannerForPlacement(
+    this,
+    binding.flBannerAdTop,
+    null, // no shimmer
+    AdPlacementKeys.COLLAPSIBLE_BANNER,
+    point = "collapsible_top",
+    isTop = true,
+    timeoutMillis = 4000
+) { loaded -> }
+
+// Collapsible — anchored to the bottom
+adMobManager.bannerAdLoader.showCollapsableBannerForPlacement(
+    this,
+    binding.flBannerAd,
+    null, // no shimmer
+    AdPlacementKeys.COLLAPSIBLE_BANNER,
+    point = "collapsible_bottom",
+    isTop = false
+) { loaded -> }
+```
+
+Note the two collapsible calls above reuse the **same placement key**
+(`COLLAPSIBLE_BANNER`) with different `point` values — that's the intended
+pattern when one placement backs several call sites: the ad unit ID is
+shared, only the `point` differs per slot (useful if you later want to block
+just the bottom one via Remote Config without touching the top).
+
+Disabled placement → callback fires `false` **and** the container is
+collapsed (`GONE`, shimmer hidden) — you don't need to hide the layout
+yourself. Full semantics in
+[Remote Config](/remote-config#disabled-placement-callback-semantics).
+
+## Full API
+
+```kotlin
+fun showAdaptiveBannerForPlacement(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, placementKey: String, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showMemRecBannerForPlacement(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, placementKey: String, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showCollapsableBannerForPlacement(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, placementKey: String, isTop: Boolean, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean
+fun destroyForPlacement(placementKey: String)
+```
+
+## Manual / advanced: raw ad unit ID
+
+The non-placement `showAdaptiveBanner`, `showMemRecBanner`, and
+`showCollapsableBanner` methods still exist, taking `adUnitId: String`
+directly in the same argument position — nothing in the sample app calls them
+this way. Resolve through `adIdFor` first if you have a genuine reason to
+bypass placement resolution:
+
+```kotlin
+val resolvedId = adMobManager.adIdFor(AdPlacementKeys.HOME_BANNER)
+bannerAdLoader.showAdaptiveBanner(activity, null, frameLayout, resolvedId)
+```
+
+```kotlin
+fun showAdaptiveBanner(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, adUnitId: String, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showMemRecBanner(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, adUnitId: String, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showCollapsableBanner(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, adUnitId: String, isTop: Boolean, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun isAdLoaded(adUnitId: String): Boolean
+fun destroy()
+fun destroy(adUnitId: String)
+```
+
+## Gotchas
+
+- **Adaptive and collapsible size themselves via `Utilities.getAdSize(activity)`** — make sure `frameLayout`'s width reflects the actual screen width at call time (e.g. not measured before rotation settles).
+- **Collapsible passes `isTop` as a request, not a guarantee** — AdMob may still choose not to collapse depending on inventory; don't build layout logic that assumes it always collapses.
+- Always call `destroyForPlacement(placementKey)` (or `destroy()` for the raw-ID API) when the hosting screen is destroyed, to release the underlying ad view.
+- Give each banner slot its own `point`, even when two slots share a placement key — see [Remote Config → Per-point control](/remote-config#per-point-control).

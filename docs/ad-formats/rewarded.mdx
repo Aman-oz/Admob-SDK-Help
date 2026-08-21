@@ -1,0 +1,150 @@
+---
+sidebar_position: 4
+title: Rewarded Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<AdFormatHero
+  format="rewarded"
+  title="Rewarded Ads"
+  description="A full-screen video the user opts into, in exchange for a reward. RewardedAdLoader tracks a single current ad unit — the reward is only granted when the SDK observes a completed view before dismissal." />
+
+```kotlin
+val rewardedAdLoader = AdMobManager.getInstance(application).rewardedAdLoader
+```
+
+## Use the placement-key methods
+
+Every call in the sample app (`MainActivity.kt`) resolves the ad through
+`AdPlacementKeys`, not a raw ID. Preload on screen entry, then load-and-show
+behind an explicit button — always gate rewarded ads behind a **user action**,
+never an automatic trigger:
+
+```kotlin
+// onCreate — preload so the button doesn't have a cold-start delay
+adMobManager.rewardedAdLoader.loadAdForPlacement(
+    this,
+    AdPlacementKeys.ON_ACTION_REWARDED_VIDEO,
+    true, // showDialog
+) { loaded ->
+    Log.d(TAG, if (loaded) "Reward Loaded" else "Reward Not Loaded")
+}
+```
+
+<Tabs>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+binding.unlockPremiumButton.setOnClickListener {
+    // Skip the call entirely if the placement is disabled — avoids showing a
+    // loading dialog for an ad that was never going to load.
+    if (!adMobManager.isEnabled(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)) {
+        Log.d(TAG, "on_action_rewarded_video placement disabled")
+        return@setOnClickListener
+    }
+
+    adMobManager.rewardedAdLoader.loadAndShowAdForPlacement(
+        this,
+        AdPlacementKeys.ON_ACTION_REWARDED_VIDEO,
+        true,
+        dialogModel = LoadingDialogModel(
+            text = "Loading Rewarded Ad...",
+            textColor = Color.WHITE,
+            textSizeSp = 30F,
+            lottieRes = R.raw.two_dots_loading,
+            lottieWidthDp = 120,
+            lottieHeightDp = 120
+        ),
+        timeoutMillis = 10000
+    ) { earned ->
+        if (earned) {
+            unlockPremiumFeatures()
+        } else {
+            Toast.makeText(this, "Watch the full ad to unlock", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="java" label="Java">
+
+```java
+binding.unlockPremiumButton.setOnClickListener(v -> {
+    if (!adMobManager.isEnabled(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)) return;
+
+    adMobManager.rewardedAdLoader.loadAndShowAdForPlacement(
+        this, AdPlacementKeys.ON_ACTION_REWARDED_VIDEO, true,
+        new LoadingDialogModel(), 10000L,
+        earned -> {
+            if (earned) unlockPremiumFeatures();
+            else Toast.makeText(this, "Watch the full ad to unlock", Toast.LENGTH_SHORT).show();
+        }
+    );
+});
+```
+
+</TabItem>
+</Tabs>
+
+`earned` is only `true` if the user watched to completion — closing early, a
+disabled placement's implicit skip (see below), or a failed load all resolve
+`false`... except that `loadAndShowAdForPlacement` specifically reports
+**`true`** when the placement is disabled, matching the interstitial
+convention of "navigation proceeds" — see
+[Remote Config](/remote-config#disabled-placement-callback-semantics). The
+`isEnabled` guard above is a belt-and-suspenders UX choice (skip the loading
+dialog outright) more than a strict requirement.
+
+## Which placement keys
+
+Two placement pairs exist for rewarded formats:
+`PREMIUM_ITEM_REWARDED_VIDEO` / `PREMIUM_ITEM_REWARDED_INTERSTITIAL` (unlocking
+premium content) and `ON_ACTION_REWARDED_VIDEO` /
+`ON_ACTION_REWARDED_INTERSTITIAL` (rewarding an in-context action) — pick
+whichever matches where the button lives; both resolve independently in
+Remote Config.
+
+## Full API
+
+```kotlin
+fun loadAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = false, dialogModel: LoadingDialogModel? = LoadingDialogModel(), point: String? = null, onLoaded: OnSuccessListener<Boolean>? = null)
+fun loadAndShowAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = true, dialogModel: LoadingDialogModel? = LoadingDialogModel(), timeoutMillis: Long = 0L, point: String? = null, onRewardEarned: OnSuccessListener<Boolean>? = null)
+fun isAdLoaded(): Boolean
+```
+
+## Manual / advanced: raw ad unit ID
+
+The non-placement `loadAd`, `showAd`, and `loadAndShowAd` methods still exist,
+but the sample app's only reference to them is commented out — and even that
+dead code resolves the ID via `adIdFor` first rather than hardcoding one:
+
+```kotlin
+// Advanced pattern, not used live anywhere in the sample app:
+val resolvedId = adMobManager.adIdFor(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)
+rewardedAdLoader.loadAd(this, resolvedId, true) { loaded ->
+    if (loaded) {
+        rewardedAdLoader.showAd(this) { earned -> }
+    }
+}
+```
+
+`showAd(activity, onRewardEarned)` shows whatever is currently loaded for this
+loader — there's no per-ad-unit selection at show time, so don't load a
+second placement/ad unit before showing the first.
+
+## Use cases
+
+- Unlock a premium feature temporarily
+- Remove ads for a fixed period ("watch an ad, no ads for 24h")
+- Bonus content / extra lives in a game
+- Any reward the user should have to actively opt into
+
+## Gotchas
+
+- `showAd`/`loadAndShowAdForPlacement` have no per-call ad-unit selection at show time — one loader, one current ad.
+- Always branch on the `earned`/reward callback, not just "did the ad show" — a user can close a rewarded ad early without earning anything.
+- Checking `adMobManager.isEnabled(key)` before calling avoids a loading dialog flash for a placement you already know is off.

@@ -1,0 +1,162 @@
+---
+sidebar_position: 2
+title: App Open & Resume Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<AdFormatHero
+  format="app-open"
+  title="App Open & Resume Ads"
+  description="Two related placements handled by one loader: the start ad (cold launch) and the resume ad (returning from background). Both run through a ProcessLifecycleOwner observer, so the SDK — not your app — decides when a resume ad is due." />
+
+`AppOpenAdLoader` is a `DefaultLifecycleObserver` registered on the process
+lifecycle in its constructor. It delegates to two internal managers you never
+touch directly: `StartAdManager` (cold launch, 4-hour ad expiry) and
+`ResumeAdManager` (background → foreground).
+
+```kotlin
+val appOpenAdLoader = AdMobManager.getInstance(application).appOpenAdLoader
+```
+
+:::info[No `AdPlacementKeys` here]
+Unlike every other format, app open/resume methods take **no placement-key
+parameter** — `appOpenAdLoader` always resolves the fixed `app_open` (start)
+and `app_open_resume` placements internally. There is no raw-ID vs.
+placement-key choice to make for this format.
+:::
+
+## Start ad — first launch / splash
+
+The resilient pattern used in the sample app's `AppNavigationHost` — try
+showing what's already available, and only load if nothing is:
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    // Prevents the resume-ad path from also firing while splash is on screen.
+    adMobManager.setSplash(true)
+
+    if (appOpenAdLoader.isStartAdAvailable()) {
+        appOpenAdLoader.showAppOpenAdIfAvailable { shown ->
+            navigateToMainActivity() // shown or not, continue either way
+        }
+    } else {
+        appOpenAdLoader.loadAppOpenAd(this) { loaded ->
+            if (loaded == true) {
+                appOpenAdLoader.showAppOpenAdIfAvailable { shown -> navigateToMainActivity() }
+            } else {
+                navigateToMainActivity()
+            }
+        }
+    }
+}
+```
+
+A simpler variant — from `MainActivity` — for a button-triggered show instead
+of a splash-blocking one, falling back to a load only when nothing's ready:
+
+```kotlin
+binding.btnAppOpen.setOnClickListener {
+    adMobManager.setSplash(true)
+    adMobManager.appOpenAdLoader.showAppOpenAdIfAvailable { shown ->
+        if (!shown) {
+            adMobManager.appOpenAdLoader.loadAppOpenAd(this) { loaded ->
+                Log.d(TAG, "App Open Ad Loaded: $loaded")
+            }
+        }
+    }
+}
+```
+
+:::danger[`setSplash(true)` must be turned back off]
+Turn it off in the splash screen's `onDestroy`, or automatic resume ads never
+fire again for the rest of the session:
+
+```kotlin
+override fun onDestroy() {
+    super.onDestroy()
+    adMobManager.setSplash(false)
+}
+```
+:::
+
+## Resume ad — returning from background
+
+Enable once, load once (typically in your main/home Activity), and the
+lifecycle observer takes it from there — you don't call `showResumeAdIfAvailable`
+yourself in the common case, the SDK shows it automatically on the next
+foreground transition once `shouldShowResumeAd` is on and `openAdResumeTime`
+has elapsed in the background.
+
+<Tabs>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// Application.onCreate — enable once
+adMobManager
+    .setOpenAdResumeTime(5)          // seconds in background before it's eligible
+    .setShouldShowResumeAd(true)
+
+// Main/home Activity.onCreate — load so one is ready
+appOpenAdLoader.loadResumeAd(this, null)
+```
+
+</TabItem>
+<TabItem value="java" label="Java">
+
+```java
+AdMobManager adMobManager = AdMobManager.getInstance(getApplication());
+adMobManager.setOpenAdResumeTime(5);
+adMobManager.setShouldShowResumeAd(true);
+
+// appOpenAdLoader is @JvmField — a plain field access from Java, not a getter
+adMobManager.appOpenAdLoader.loadResumeAd(this, null);
+```
+
+</TabItem>
+</Tabs>
+
+To suppress the resume ad on a specific screen (e.g. a payment or in-app
+purchase flow you don't want interrupted), reuse the same `isSplash` flag —
+turn it on entering that screen and off in `onDestroy`, exactly like the
+splash pattern above.
+
+## Full API
+
+```kotlin
+fun loadAppOpenAd(context: Context, onSuccessListener: OnSuccessListener<Boolean>?)
+fun showAppOpenAdIfAvailable(onShowAdCompleteListener: OnSuccessListener<Boolean>)
+fun loadResumeAd(context: Context, onSuccessListener: OnSuccessListener<Boolean>?)
+fun showResumeAdIfAvailable(onShowAdCompleteListener: OnSuccessListener<Boolean>)
+fun isStartAdAvailable(): Boolean
+fun destroyAds()
+```
+
+Note the two `show*IfAvailable` methods take **only the callback**, no
+`Activity`/`Context` — the loader already tracks the current foreground
+activity itself via the lifecycle observer.
+
+## Relevant `AdController` knobs
+
+| Setter | `AdController` field | Default |
+|---|---|---|
+| `setAppOpenAdStartId(id)` | `appOpenAdStartId` | `""` |
+| `setAppOpenAdResumeId(id)` | `appOpenAdResumeId` | `""` |
+| `setOpenAdResumeTime(seconds)` | `openAdResumeTime` | `5` |
+| `setShouldShowResumeAd(bool)` | `shouldShowResumeAd` | `true` |
+| `setSplash(bool)` | `isSplash` | `false` |
+
+If you're on [Remote Config](/remote-config), the `app_open` and
+`app_open_resume` placement `enable` flags gate loading/showing automatically
+— `setShouldShowResumeAd` is a separate, app-controlled override that Remote
+Config never touches.
+
+## Gotchas
+
+- **`destroyAds()` in `onDestroy` of your exit point** — call it wherever your app's process teardown happens, alongside `setSplash(false)`.
+- **Start ads expire after 4 hours** — if the user backgrounds the app for longer than that before the start ad shows, `StartAdManager` treats it as stale and reloads rather than showing an expired ad.
+- **`AdMobManager.isPremium` is a process-wide static**, not per-instance — setting it anywhere in the app disables the automatic resume-ad path everywhere.

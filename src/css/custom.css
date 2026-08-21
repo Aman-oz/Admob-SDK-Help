@@ -1,0 +1,102 @@
+/**
+ * Ozi AdMob SDK docs — design tokens.
+ * Primary palette is a neutral indigo/slate placeholder (no official Ozi
+ * brand assets exist in the SDK repo yet) — swap these if brand colors land.
+ */
+
+:root {
+  --ifm-color-primary: #4a5ce8;
+  --ifm-color-primary-dark: #2c40e2;
+  --ifm-color-primary-darker: #2a3dd6;
+  --ifm-color-primary-darkest: #2232b0;
+  --ifm-color-primary-light: #6879ec;
+  --ifm-color-primary-lighter: #7686ee;
+  --ifm-color-primary-lightest: #a0abf5;
+  --ifm-code-font-size: 92%;
+  --ifm-heading-font-weight: 700;
+  --docusaurus-highlighted-code-line-bg: rgba(74, 92, 232, 0.1);
+
+  /* Per-ad-format accent colors, used by AdFormatHero / cards */
+  --ozi-format-app-open: #ff9f43;
+  --ozi-format-app-open-bg: #fff4e8;
+  --ozi-format-interstitial: #7c5cfc;
+  --ozi-format-interstitial-bg: #f1ecff;
+  --ozi-format-rewarded: #f5b400;
+  --ozi-format-rewarded-bg: #fff8e1;
+  --ozi-format-banner: #22b8cf;
+  --ozi-format-banner-bg: #e6f9fb;
+  --ozi-format-native: #2ecc71;
+  --ozi-format-native-bg: #e9fbf0;
+
+  --ozi-surface: #f6f7fb;
+  --ozi-border: #e3e6f3;
+  --ozi-shadow: 0 8px 24px rgba(30, 34, 90, 0.08);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #8b98f5;
+  --ifm-color-primary-dark: #6f7ff0;
+  --ifm-color-primary-darker: #6072ee;
+  --ifm-color-primary-darkest: #3d51e8;
+  --ifm-color-primary-light: #a7b1f8;
+  --ifm-color-primary-lighter: #b4bdf9;
+  --ifm-color-primary-lightest: #dbe0fc;
+  --docusaurus-highlighted-code-line-bg: rgba(139, 152, 245, 0.15);
+
+  --ozi-format-app-open-bg: rgba(255, 159, 67, 0.12);
+  --ozi-format-interstitial-bg: rgba(124, 92, 252, 0.14);
+  --ozi-format-rewarded-bg: rgba(245, 180, 0, 0.12);
+  --ozi-format-banner-bg: rgba(34, 184, 207, 0.12);
+  --ozi-format-native-bg: rgba(46, 204, 113, 0.12);
+
+  --ozi-surface: #1b1d29;
+  --ozi-border: #2e3142;
+  --ozi-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- Scroll-reveal animation (used by the <Reveal> component) ---- */
+.ozi-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.ozi-reveal.ozi-reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ozi-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ---- Ad format hero card shared chrome ---- */
+.ozi-format-hero {
+  border-radius: 16px;
+  border: 1px solid var(--ozi-border);
+  background: var(--ozi-surface);
+  box-shadow: var(--ozi-shadow);
+  padding: 2rem;
+  margin: 1.5rem 0 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.ozi-format-hero__phone {
+  flex: 0 0 auto;
+}
+
+.ozi-format-hero__copy {
+  flex: 1 1 240px;
+  min-width: 240px;
+}
+
+.ozi-format-hero__copy h2 {
+  margin-top: 0;
+}

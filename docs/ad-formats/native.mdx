@@ -1,0 +1,191 @@
+---
+sidebar_position: 6
+title: Native Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="native"
+  title="Native Ads"
+  description="An ad styled to match your own layout — you supply the XML, NativeAdBuilder configures which sub-views are shown and how they're colored, and NativeAdLoader fills them in." />
+
+```kotlin
+val nativeAdLoader = AdMobManager.getInstance(application).nativeAdLoader
+```
+
+:::info[Named `NativeAdLoader`, not `NativeAd`]
+On this (Next-Gen) line the loader class is `NativeAdLoader` — renamed from the
+legacy line's `NativeAd` to avoid colliding with the Next-Gen SDK's own
+`NativeAd` type. The property you reach it through is still
+`AdMobManager.nativeAdLoader`.
+:::
+
+## 1. Your layout needs these well-known IDs
+
+`NativeAdLoader` fills these in from the ad it receives — get the IDs right or
+`configureAdViews` throws when the required `ad_media` view is missing:
+
+```xml title="res/layout/native_ad_layout.xml"
+<com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView>
+    <com.google.android.libraries.ads.mobile.sdk.nativead.MediaView
+        android:id="@+id/ad_media" />
+    <ImageView android:id="@+id/ad_app_icon" />
+    <TextView android:id="@+id/ad_headline" />
+    <TextView android:id="@+id/ad_body" />
+    <TextView android:id="@+id/ad_advertiser" />
+    <RatingBar android:id="@+id/ad_stars" />
+    <TextView android:id="@+id/ad_price" />
+    <TextView android:id="@+id/ad_store" />
+    <androidx.appcompat.widget.AppCompatButton android:id="@+id/ad_call_to_action" />
+    <ImageView android:id="@+id/ad_close" />
+</com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView>
+```
+
+:::warning[Root tag and MediaView are Next-Gen SDK classes]
+`NativeAdView`/`MediaView` come from
+`com.google.android.libraries.ads.mobile.sdk.nativead`, **not**
+`com.google.android.gms.ads.nativead`. All ten IDs and every attribute are
+otherwise identical to the legacy line.
+:::
+
+## 2. Build the ad with `NativeAdBuilder`
+
+```kotlin
+val builder = NativeAdBuilder.Builder(
+    R.layout.native_ad_with_media, binding.nativeAdLayout.adFrame, binding.nativeAdLayout.shimmerFbAd
+)
+    .setShowHeadline(true)     // default true
+    .setShowBody(true)
+    .setShowCallToAction(true) // default true
+    .setIconEnabled(true)
+    .setShowMedia(true)
+    .build()
+```
+
+`Builder(layout, frameLayout, shimmerFrameLayout)` — `shimmerFrameLayout` may
+be `null`. Every `setShowX`/`setXColor` call is optional; unset colors fall
+back to that placement's Remote Config palette automatically (see
+[Remote Config → Native ad design](/remote-config#native-ad-design-lightdark)).
+
+## 3. Use the placement-key methods
+
+This is what every screen in the sample app does — `SplashActivity`,
+`LanguageActivity`, `OnboardingActivity`, and `NativeActivity` all load native
+ads exclusively by `AdPlacementKeys`, never a raw ad unit ID.
+
+### Quick — load and show together
+
+```kotlin
+// SplashActivity — real call from the sample app
+ads.nativeAdLoader.loadAndShowForPlacement(
+    AdPlacementKeys.SPLASH_NATIVE,
+    builder,
+    point = "splash"
+) { loaded -> Log.d(TAG, "splash native loaded=$loaded") }
+```
+
+### Preload, then show — zero wait
+
+Preferred for a screen reached right after another one where you had idle
+time to load ahead (this is exactly how `NativeActivity` preloads
+`HOME_NATIVE` on create, then shows it on a button tap):
+
+```kotlin
+// On create — preload
+adMobManager.nativeAdLoader.loadAdForPlacement(
+    AdPlacementKeys.HOME_NATIVE, 6000
+) { success, ad ->
+    if (success) binding.btnShowLoadedAd.isEnabled = true
+}
+
+// On button tap — instant if preloaded, falls back to a fresh load otherwise
+adMobManager.nativeAdLoader.showPreloadedAdForPlacement(
+    this, builder, AdPlacementKeys.HOME_NATIVE
+) { success ->
+    Log.d(TAG, "Ad shown status: $success")
+}
+```
+
+`isAdLoadedForPlacement(placementKey)` lets you check before committing to
+show:
+
+```kotlin
+if (adMobManager.nativeAdLoader.isAdLoadedForPlacement(AdPlacementKeys.HOME_NATIVE)) {
+    adMobManager.nativeAdLoader.showPreloadedAdForPlacement(this, builder, AdPlacementKeys.HOME_NATIVE)
+}
+```
+
+With the placement-key native methods, the color palette is applied
+**automatically** — any color you didn't set explicitly on `NativeAdBuilder`
+is filled from `native_ad_design` for that placement, matching the current
+theme. Explicit setters always win over the remote palette. Disabled
+placement → callback `false` **and** the container collapses (`GONE`, shimmer
+hidden).
+
+There's also a dedicated full-screen variant for a splash/interstitial-style
+native placement — shorthand for
+`...ForPlacement(AdPlacementKeys.FULL_SCREEN_NATIVE, ...)`:
+
+```kotlin
+nativeAdLoader.loadFullScreenNativeAd { success, ad -> }
+nativeAdLoader.showFullScreenNativeAd(lifecycleOwner = this, builder) { success -> }
+```
+
+## Full API
+
+```kotlin
+fun loadAdForPlacement(placementKey: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, point: String? = null, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
+fun loadAndShowForPlacement(placementKey: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showPreloadedAdForPlacement(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, placementKey: String, point: String? = null, onSuccessListener: ((success: Boolean) -> Unit)? = null)
+fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean
+fun destroyForPlacement(placementKey: String)
+```
+
+Note `showPreloadedAdForPlacement` takes a plain Kotlin lambda
+`(Boolean) -> Unit`, not the `OnSuccessListener` interface the other loaders
+use — a quirk worth knowing if you're calling from Java (use a lambda
+expression, not an anonymous `OnSuccessListener`). `loadAdForPlacement`'s
+callback is `OnSuccessListenerNative<Boolean, NativeAd?>`, delivering
+`(success, ad)` — two arguments, not one.
+
+## Manual / advanced: raw ad unit ID
+
+The non-placement `loadAd`, `loadAndShow`, and `showPreloadedAd` methods still
+exist, taking `adUnitId: String` directly — nothing in the sample app calls
+them this way:
+
+```kotlin
+val resolvedId = adMobManager.adIdFor(AdPlacementKeys.HOME_NATIVE)
+nativeAdLoader.loadAndShow(resolvedId, builder)
+```
+
+```kotlin
+fun loadAd(adUnitId: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
+fun loadAndShow(adUnitId: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showPreloadedAd(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, adUnitId: String, onSuccessListener: ((success: Boolean) -> Unit)? = null)
+fun isAdLoaded(adUnitId: String): Boolean
+fun destroy(adUnitId: String? = null)
+```
+
+If you skip a `NativeAdBuilder.Builder` layout entirely, the loader falls back
+to a bundled default layout (`admob_small_native_media`) — fine for a quick
+test, not for shipping your own design.
+
+## `NativeAdBuilder` setters
+
+Visibility toggles (all default `false` except where noted):
+`setShowHeadline` (**true**), `setShowBody`, `setShowCallToAction` (**true**),
+`setIconEnabled`, `setShowMedia`, `setShowRating`, `setShowPrice`,
+`setShowStore`, `setShowAdvertiser`, `setShowAdChoices`.
+
+Styling: `setAdBgColor`, `setCtaBgColor`, `setCtaTextColor`, `setCtaRadius`
+(default `64`), `setAdTitleColor`, `setAdBodyColor`, `setShowBgStroke`
+(default **true**), `setStrokeColor`, `setStrokeWidth` (default `1`),
+`setAdBgRadius`.
+
+## Gotchas
+
+- **`ad_media` is required** — `configureAdViews` throws if your layout is missing it, even if you called `setShowMedia(false)`.
+- Explicit builder colors always win over the Remote Config palette — set a color only when you deliberately want to override the design system for one placement.
+- Call `nativeAdLoader.destroy()` (or `destroyForPlacement(placementKey)`) in `onDestroy` — every sample screen that loads a native ad does this.

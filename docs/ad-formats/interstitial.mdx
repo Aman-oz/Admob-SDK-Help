@@ -1,0 +1,177 @@
+---
+sidebar_position: 3
+title: Interstitial Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<AdFormatHero
+  format="interstitial"
+  title="Interstitial Ads"
+  description="A full-screen ad shown between two pieces of content. InterstitialAdLoader keeps two independent ad references — one for loadAd/showAd, one for loadAndShowAd — with separate loading flags, so the two flows can never race each other." />
+
+```kotlin
+val interstitialAdLoader = AdMobManager.getInstance(application).interstitialAdLoader
+```
+
+:::danger[Never show on a screen's own `onCreate`]
+Interstitials belong **after a completed user action** (download finished,
+level cleared, share sent) — not the first thing a screen does. Showing one
+before the user has done anything reads as a mistake, not monetization.
+:::
+
+## Use the placement-key methods — this is what every screen in the sample app does
+
+Every method takes an `AdPlacementKeys` constant instead of a raw ad unit ID —
+the SDK resolves the real ID from [Remote Config](/remote-config) (or the
+bundled default JSON) and checks the placement's enable flag for you. This is
+the **only** pattern used anywhere in the sample app (`app/`) — there is no
+live call site left that hardcodes an ad unit ID.
+
+<Tabs>
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin
+// InterstitialActivity — real call from the sample app
+interstitialAdLoader.loadAndShowAdForPlacement(
+    this@InterstitialActivity,
+    placementKey = AdPlacementKeys.INTERNAL_APP_INTERSTITIAL,
+    showDialog = true,
+    dialogTimeout = 2000,
+    dialogModel = LoadingDialogModel(
+        text = "Loading Ad...",
+        textColor = Color.WHITE,
+        textSizeSp = 30F,
+        lottieRes = R.raw.two_dots_loading,
+        lottieWidthDp = 120,
+        lottieHeightDp = 120
+    ),
+    timeoutMillis = 10000,
+    point = "load_and_show_inter_ad",
+    onAdLoadedListener = { loaded ->
+        Log.d(TAG, "onAdLoadedListener: Interstitial Ad Loaded: $loaded")
+    },
+    onSuccessListener = { shown ->
+        // Continue regardless — never block navigation on ad success
+        if (shown) goToNextScreen() else goToNextScreen()
+    }
+)
+```
+
+</TabItem>
+<TabItem value="java" label="Java">
+
+```java
+interstitialAdLoader.loadAndShowAdForPlacement(
+    activity, AdPlacementKeys.INTERNAL_APP_INTERSTITIAL, true, 2000L,
+    new LoadingDialogModel(), 10000L, "load_and_show_inter_ad",
+    loaded -> {}, shown -> goToNextScreen()
+);
+```
+
+</TabItem>
+</Tabs>
+
+`point` is a free-form, per-call-site token (here `"load_and_show_inter_ad"`)
+that lets Remote Config block **this specific call site** without touching
+other screens that share the same placement — see
+[Remote Config → Per-point control](/remote-config#per-point-control). Passing
+`null` (or omitting it) means "not individually blockable."
+
+## Which method to call
+
+| Method | When |
+|---|---|
+| `loadAndShowAdForPlacement` | Simplest — load then show right after a completed action |
+| `loadAdForPlacement` + `showAdForPlacement` | Preload on the previous screen, show on the next one's `onResume` |
+| `showAndLoadAdForPlacement` | Show what's loaded **and** immediately preload the next one — high-traffic screens users return to often |
+| `showAdWithTimeAndCounterForPlacement` | Automatic pacing (every Nth action, min/max seconds) instead of manual timing |
+
+### Preload / show-later
+
+```kotlin
+// Previous screen
+interstitialAdLoader.loadAdForPlacement(
+    AdPlacementKeys.INTERNAL_APP_INTERSTITIAL, point = "btn_load_inter_ad"
+) { loaded -> }
+
+// Next screen
+override fun onResume() {
+    super.onResume()
+    interstitialAdLoader.showAdForPlacement(
+        this, placementKey = AdPlacementKeys.INTERNAL_APP_INTERSTITIAL, point = "btn_show_inter_ad"
+    ) { }
+}
+```
+
+### Automatic pacing
+
+```kotlin
+// Application.onCreate — configure once
+adMobManager
+    .setInterstitialCounter(3)      // show every 3rd call
+    .setInterstitialAdMinTime(10)   // seconds
+    .setInterstitialAdMaxTime(20)   // force-show after this many seconds regardless of counter
+
+// Anywhere, without manual timing checks
+interstitialAdLoader.showAdWithTimeAndCounterForPlacement(
+    this,
+    AdPlacementKeys.INTERNAL_APP_INTERSTITIAL,
+    showDialog = true,
+    dialogModel = LoadingDialogModel(
+        text = "Loading Ad...", textColor = Color.WHITE, textSizeSp = 30F,
+        lottieRes = R.raw.two_dots_loading, lottieWidthDp = 120, lottieHeightDp = 120
+    ),
+    dialogTimeout = 2000,
+    point = "show_and_load_inter_ad_with_time_and_counter"
+) { }
+```
+
+**Disabled-placement behavior differs by method** — `loadAdForPlacement`
+reports `false` when disabled, but every `show*/loadAndShow*ForPlacement`
+variant reports **`true`** so navigation still proceeds. Full table in
+[Remote Config](/remote-config#disabled-placement-callback-semantics).
+
+## Full API
+
+```kotlin
+fun loadAdForPlacement(placementKey: String, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun loadAdWithTimeOutForPlacement(placementKey: String, timeOut: Long, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = false, dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(), point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showAndLoadAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean? = false, dialogModel: LoadingDialogModel? = LoadingDialogModel(), timeOut: Long = 0L, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showAdWithTimeAndCounterForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = false, dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(), showForcefully: Boolean = false, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun loadAndShowAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = true, dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(), timeoutMillis: Long = 0L, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null, onAdLoadedListener: OnSuccessListener<Boolean>? = null)
+fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean
+```
+
+`showDialog = true` shows the shared `LoadingDialog` (a blocking spinner) while
+the ad loads and then shows — pass `dialogModel` to customize it, or `false`
+to skip it entirely if your screen has its own loading UI.
+
+## Manual / advanced: resolving a raw ad unit ID yourself
+
+The non-`ForPlacement` methods (`loadAd`, `showAd`, `showAndLoadAd`,
+`showAdWithTimeAndCounter`, `loadAndShowAd`, `loadAdWithTimeOut`, all taking a
+raw `adUnitId: String`) still exist, but **nothing in the sample app calls
+them with a hardcoded ID string**. If you ever need the raw-ID API — e.g.
+some one-off ad unit that deliberately isn't in Remote Config — resolve the ID
+through the SDK first rather than hardcoding it:
+
+```kotlin
+// Advanced pattern: resolve via adIdFor, then use the raw-ID method
+val resolvedId = adMobManager.adIdFor(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)
+interstitialAdLoader.loadAd(resolvedId) { loaded -> }
+```
+
+`destroy()` / `destroy(adUnitId)` and `resetFrequencyCap()` have no placement-
+key variant — they operate the same way regardless of which loading style you
+used.
+
+## Gotchas
+
+- **`loadAdForPlacement`/`showAdForPlacement` and `loadAndShowAdForPlacement` are fully independent** — loading via one doesn't make `isAdLoadedForPlacement` true for the other's flow. Pick one pattern per call site.
+- **`resetFrequencyCap()`** clears the counter/time state if you need to force a fresh pacing cycle (e.g. after a premium purchase is refunded).
+- Always act on the callback (`onSuccessListener`) to continue navigation — never assume the ad showed.
+- Give each call site its own `point` string (the sample app uses ones like `"btn_load_inter_ad"`, `"load_and_show_inter_ad"`) so a placement can be selectively blocked later without a code change — see [Remote Config → Per-point control](/remote-config#per-point-control).

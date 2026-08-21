@@ -1,0 +1,101 @@
+.phone {
+  width: 160px;
+  height: 320px;
+}
+
+.screen {
+  fill: var(--ifm-background-color, #fff);
+}
+
+/* App Open / Resume — sunrise rays fade + rise on a loop */
+.appOpenRay {
+  transform-origin: 80px 300px;
+  animation: appOpenRay 3.2s ease-in-out infinite;
+}
+.appOpenRay:nth-child(2) { animation-delay: 0.2s; }
+.appOpenRay:nth-child(3) { animation-delay: 0.4s; }
+.appOpenSun {
+  animation: appOpenSun 3.2s ease-in-out infinite;
+  transform-origin: 80px 210px;
+}
+@keyframes appOpenRay {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+@keyframes appOpenSun {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.05); }
+}
+
+/* Interstitial — full-screen panel fades + scales in, then holds, then exits */
+.interstitialPanel {
+  animation: interstitialPanel 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: 80px 160px;
+}
+@keyframes interstitialPanel {
+  0% { opacity: 0; transform: scale(0.85); }
+  15% { opacity: 1; transform: scale(1); }
+  70% { opacity: 1; transform: scale(1); }
+  90%, 100% { opacity: 0; transform: scale(0.92); }
+}
+.interstitialClose {
+  animation: fadeHold 3.6s ease-in-out infinite;
+}
+@keyframes fadeHold {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  70% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+/* Rewarded — coin bounces and spins gently */
+.rewardedCoin {
+  animation: rewardedCoin 2.4s ease-in-out infinite;
+  transform-origin: 80px 200px;
+}
+@keyframes rewardedCoin {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(8deg); }
+}
+.rewardedSpark {
+  animation: rewardedSpark 2.4s ease-in-out infinite;
+}
+@keyframes rewardedSpark {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Banner — bar slides up from the bottom edge, holds, slides back */
+.bannerBar {
+  animation: bannerBar 3.2s ease-in-out infinite;
+}
+@keyframes bannerBar {
+  0% { transform: translateY(48px); opacity: 0; }
+  20% { transform: translateY(0); opacity: 1; }
+  80% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(48px); opacity: 0; }
+}
+
+/* Native — one feed row morphs into a highlighted ad card */
+.nativeCard {
+  animation: nativeCard 3.4s ease-in-out infinite;
+  transform-origin: 80px 190px;
+}
+@keyframes nativeCard {
+  0%, 15% { stroke-dasharray: 4 4; stroke-opacity: 0.5; }
+  40%, 75% { stroke-dasharray: 0; stroke-opacity: 1; }
+  100% { stroke-dasharray: 4 4; stroke-opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appOpenRay,
+  .appOpenSun,
+  .interstitialPanel,
+  .interstitialClose,
+  .rewardedCoin,
+  .rewardedSpark,
+  .bannerBar,
+  .nativeCard {
+    animation: none;
+  }
+}

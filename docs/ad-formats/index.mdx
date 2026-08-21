@@ -1,0 +1,80 @@
+---
+sidebar_position: 1
+title: Ad Formats
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+# Ad Formats
+
+All five formats are reached the same way, through the singleton:
+
+```kotlin
+val adMobManager = AdMobManager.getInstance(application)
+val interstitialAd = adMobManager.interstitialAdLoader
+val nativeAd        = adMobManager.nativeAdLoader
+val appOpenAd        = adMobManager.appOpenAdLoader
+val rewardedAd        = adMobManager.rewardedAdLoader
+val bannerAd          = adMobManager.bannerAdLoader
+```
+
+Every loader has two call styles, but only one of them is actually used
+anywhere in the sample app:
+
+- **Placement (use this)** — `showAdaptiveBannerForPlacement(..., AdPlacementKeys.HOME_BANNER, ...)` — the SDK resolves the ad unit ID from [Remote Config](/remote-config) (or the bundled default JSON if the fetch hasn't completed) and enforces the placement's enable flag automatically. This is the pattern every screen in `app/` uses — there is no live call site anywhere in the sample that hardcodes an ad unit ID.
+- **Raw ID (manual/advanced only)** — `showAdaptiveBanner(..., adUnitId, ...)` — you pass an ad unit ID directly. Reach for this only if you have a genuine reason to bypass placement resolution, and even then resolve the ID via `adMobManager.adIdFor(placementKey)` first rather than hardcoding a literal string — that's the one reference to this style left in the sample app, and it's commented out.
+
+Pick a format below for its exact method signatures and when to reach for it.
+
+<AdFormatHero
+  format="app-open"
+  title="App Open & Resume"
+  description="Shown while the app itself is loading — cold start (start ad) or coming back from the background (resume ad). Managed automatically via a ProcessLifecycleObserver.">
+  **Use for:** cold start after splash, returning from background after 5+ seconds away.
+  [Full guide →](/ad-formats/app-open-resume)
+</AdFormatHero>
+
+<AdFormatHero
+  format="interstitial"
+  title="Interstitial"
+  description="A full-screen ad between two pieces of content, shown after the user finishes an action — never on a screen's own onCreate.">
+  **Use for:** after a completed action (download, share, finish a level), or paced automatically via a counter + time window.
+  [Full guide →](/ad-formats/interstitial)
+</AdFormatHero>
+
+<AdFormatHero
+  format="rewarded"
+  title="Rewarded"
+  description="A full-screen video the user opts into by watching in exchange for a reward. Reward is only granted on a completed view.">
+  **Use for:** unlock premium features, bonus content, extra lives — always behind an explicit user action.
+  [Full guide →](/ad-formats/rewarded)
+</AdFormatHero>
+
+<AdFormatHero
+  format="banner"
+  title="Banner"
+  description="A persistent, small ad anchored to part of the screen. Three variants: adaptive (recommended default), medium rectangle (MREC), and collapsible.">
+  **Use for:** content screens (home, list, details) that stay open for a while.
+  [Full guide →](/ad-formats/banner)
+</AdFormatHero>
+
+<AdFormatHero
+  format="native"
+  title="Native"
+  description="An ad styled to match your own layout — you supply the XML, the SDK fills in headline/media/CTA/etc. Blends into a feed instead of interrupting it.">
+  **Use for:** list/feed rows, and any screen where an interstitial or banner would feel out of place.
+  [Full guide →](/ad-formats/native)
+</AdFormatHero>
+
+## Quick picker
+
+| I want to... | Use |
+|---|---|
+| Monetize a natural break in the flow (finished download, level, share) | [Interstitial](/ad-formats/interstitial) `loadAndShowAdForPlacement` |
+| Pace interstitials automatically instead of managing timers myself | [Interstitial](/ad-formats/interstitial) `showAdWithTimeAndCounterForPlacement` |
+| Reward a user for opting in to watch a video | [Rewarded](/ad-formats/rewarded) |
+| Keep a small ad visible while the user reads/scrolls | [Banner](/ad-formats/banner) — adaptive |
+| Get a higher-CTR block ad on an article/blog screen | [Banner](/ad-formats/banner) — MREC |
+| Save vertical space on a tight layout | [Banner](/ad-formats/banner) — collapsible |
+| Blend an ad into a list/feed | [Native](/ad-formats/native) |
+| Monetize app cold start or return-from-background | [App Open & Resume](/ad-formats/app-open-resume) |
