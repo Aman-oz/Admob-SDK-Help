@@ -18,7 +18,10 @@
     "@docusaurus/faster": "3.10.2",
     "@docusaurus/preset-classic": "3.10.2",
     "@mdx-js/react": "^3.0.0",
+    "@vercel/functions": "^1.5.0",
     "clsx": "^2.0.0",
+    "firebase": "^11.0.0",
+    "firebase-admin": "^13.0.0",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

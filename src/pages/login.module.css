@@ -1,0 +1,57 @@
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 2rem 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  padding: 2.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--ozi-border);
+  background: var(--ifm-background-surface-color, var(--ozi-surface));
+  box-shadow: var(--ozi-shadow);
+}
+
+.title {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field input {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--ozi-border);
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+}
+
+.field input:focus {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 1px;
+}
+
+.error {
+  color: var(--ifm-color-danger);
+  font-size: 0.85rem;
+  margin: -0.25rem 0 1rem;
+}

@@ -30,6 +30,17 @@ const config = {
     locales: ['en'],
   },
 
+  // Public (non-secret) Firebase Web SDK config, baked into the client
+  // bundle at build time — set these as Vercel project env vars.
+  customFields: {
+    firebaseConfig: {
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      appId: process.env.FIREBASE_APP_ID,
+    },
+  },
+
   presets: [
     [
       'classic',
@@ -91,6 +102,11 @@ const config = {
             docId: 'troubleshooting',
             position: 'right',
             label: 'Troubleshooting',
+          },
+          {
+            to: '/team',
+            position: 'right',
+            label: 'Team Access',
           },
         ],
       },
