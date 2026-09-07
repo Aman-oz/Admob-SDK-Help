@@ -68,6 +68,15 @@ be `null`. Every `setShowX`/`setXColor` call is optional; unset colors fall
 back to that placement's Remote Config palette automatically (see
 [Remote Config → Native ad design](/remote-config#native-ad-design-lightdark)).
 
+:::tip[The media video starts muted by default]
+Every loading/showing method below takes a `startVideoMuted: Boolean`
+parameter, defaulting to **`true`**. Pass `startVideoMuted = false` where
+autoplaying sound is actually appropriate for that placement (see the
+splash example just below). This is a plain method parameter, **not** a
+`NativeAdBuilder` setter — it isn't part of the layout/styling
+configuration, it's passed fresh on every load/show call.
+:::
+
 ## 3. Use the placement-key methods
 
 This is what every screen in the sample app does — `SplashActivity`,
@@ -77,10 +86,13 @@ ads exclusively by `AdPlacementKeys`, never a raw ad unit ID.
 ### Quick — load and show together
 
 ```kotlin
-// SplashActivity — real call from the sample app
+// SplashActivity — real call from the sample app. Sound is allowed here
+// (startVideoMuted = false) because the splash screen has the user's full
+// attention — most other placements should leave it at the true default.
 ads.nativeAdLoader.loadAndShowForPlacement(
     AdPlacementKeys.SPLASH_NATIVE,
     builder,
+    startVideoMuted = false,
     point = "splash"
 ) { loaded -> Log.d(TAG, "splash native loaded=$loaded") }
 ```
@@ -128,18 +140,22 @@ native placement — shorthand for
 `...ForPlacement(AdPlacementKeys.FULL_SCREEN_NATIVE, ...)`:
 
 ```kotlin
-nativeAdLoader.loadFullScreenNativeAd { success, ad -> }
-nativeAdLoader.showFullScreenNativeAd(lifecycleOwner = this, builder) { success -> }
+nativeAdLoader.loadFullScreenNativeAd(startVideoMuted = true) { success, ad -> }
+nativeAdLoader.showFullScreenNativeAd(lifecycleOwner = this, builder, startVideoMuted = true) { success -> }
 ```
 
 ## Full API
 
 ```kotlin
-fun loadAdForPlacement(placementKey: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, point: String? = null, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
-fun loadAndShowForPlacement(placementKey: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
-fun showPreloadedAdForPlacement(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, placementKey: String, point: String? = null, onSuccessListener: ((success: Boolean) -> Unit)? = null)
+fun loadAdForPlacement(placementKey: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, startVideoMuted: Boolean = true, point: String? = null, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
+fun loadAndShowForPlacement(placementKey: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, startVideoMuted: Boolean = true, point: String? = null, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showPreloadedAdForPlacement(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, placementKey: String, startVideoMuted: Boolean = true, point: String? = null, onSuccessListener: ((success: Boolean) -> Unit)? = null)
 fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean
 fun destroyForPlacement(placementKey: String)
+
+// Shorthand for ...ForPlacement(AdPlacementKeys.FULL_SCREEN_NATIVE, ...)
+fun loadFullScreenNativeAd(timeoutMillis: Long = 0L, forceRefresh: Boolean = false, startVideoMuted: Boolean = true, point: String? = null, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
+fun showFullScreenNativeAd(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, startVideoMuted: Boolean = true, point: String? = null, onSuccessListener: ((success: Boolean) -> Unit)? = null)
 ```
 
 Note `showPreloadedAdForPlacement` takes a plain Kotlin lambda
@@ -161,9 +177,9 @@ nativeAdLoader.loadAndShow(resolvedId, builder)
 ```
 
 ```kotlin
-fun loadAd(adUnitId: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
-fun loadAndShow(adUnitId: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, onSuccessListener: OnSuccessListener<Boolean>? = null)
-fun showPreloadedAd(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, adUnitId: String, onSuccessListener: ((success: Boolean) -> Unit)? = null)
+fun loadAd(adUnitId: String, timeoutMillis: Long = 0L, forceRefresh: Boolean = false, startVideoMuted: Boolean = true, onSuccessListener: OnSuccessListenerNative<Boolean, NativeAd?>? = null)
+fun loadAndShow(adUnitId: String, builder: NativeAdBuilder, forceLoadNewAd: Boolean = false, timeoutMillis: Long = 0L, startVideoMuted: Boolean = true, onSuccessListener: OnSuccessListener<Boolean>? = null)
+fun showPreloadedAd(lifecycleOwner: LifecycleOwner, builder: NativeAdBuilder, adUnitId: String, startVideoMuted: Boolean = true, onSuccessListener: ((success: Boolean) -> Unit)? = null)
 fun isAdLoaded(adUnitId: String): Boolean
 fun destroy(adUnitId: String? = null)
 ```
@@ -189,3 +205,4 @@ Styling: `setAdBgColor`, `setCtaBgColor`, `setCtaTextColor`, `setCtaRadius`
 - **`ad_media` is required** — `configureAdViews` throws if your layout is missing it, even if you called `setShowMedia(false)`.
 - Explicit builder colors always win over the Remote Config palette — set a color only when you deliberately want to override the design system for one placement.
 - Call `nativeAdLoader.destroy()` (or `destroyForPlacement(placementKey)`) in `onDestroy` — every sample screen that loads a native ad does this.
+- **`startVideoMuted` defaults to `true` everywhere** — a native ad in a list/feed autoplaying with sound is a jarring, easy-to-miss regression. Only flip it for a placement where the user's full attention is already on that one ad (e.g. splash).

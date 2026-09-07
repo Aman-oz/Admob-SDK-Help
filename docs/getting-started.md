@@ -42,7 +42,7 @@ Then in the app module:
 
 ```kotlin title="app/build.gradle.kts"
 dependencies {
-    implementation("com.ozi.admob:ads:2.0.1-rc1") // check the latest published version with your lead
+    implementation("com.ozi.admob:ads:2.0.3") // check the latest published version with your lead
 }
 ```
 

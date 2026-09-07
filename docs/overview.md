@@ -10,7 +10,7 @@ remote-driven configuration, and the splash → onboarding → main navigation f
 It exists so that pattern lives in **one place** instead of being re-implemented
 (and drifting) app by app.
 
-This site documents the **Next-Gen line** — the current `2.0.1-rc1`+ releases,
+This site documents the **Next-Gen line** — the current `2.0.3`+ releases,
 built on Google's [GMA Next-Gen SDK](https://developers.google.com/ad-manager/mobile-ads-sdk/android/next-gen)
 (`com.google.android.libraries.ads.mobile.sdk`) rather than the legacy
 `com.google.android.gms:play-services-ads`. The two ad SDKs cannot coexist in one

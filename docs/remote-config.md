@@ -181,6 +181,60 @@ Fallback order is always: fetched Firebase value → in-app custom default (via
 `RemoteConfigDefaults.Builder().addCustomDefault(...)`) → the default passed at
 the call site.
 
+## Reading every value (debugging)
+
+Two different tools, depending on what you actually need — don't reach for
+the wrong one:
+
+### Every key Firebase has, regardless of schema
+
+`AdsRemoteConfig.getAllValues()` wraps Firebase's own `FirebaseRemoteConfig.all`
+and returns **every parameter currently fetched**, as `String`, whether or not
+the SDK has a typed accessor for it — including keys you haven't written any
+code against yet:
+
+```kotlin
+val all: Map<String, String> = AdMobManager.getInstance(application).remoteConfig.getAllValues()
+all.forEach { (key, value) -> Log.d("RemoteConfig", "$key = $value") }
+```
+
+Falls back to the in-app defaults map if Firebase isn't available, so it never
+throws. This is the right call for a generic "list everything currently in the
+console" debug screen — but it gives you flat strings, not the parsed
+placement/pacing/design structure.
+
+### The sample app's schema-aware dump (what `AdsApplication` actually logs)
+
+For day-to-day debugging, the sample app does **not** call `getAllValues()` —
+it logs the fully-parsed `ad_configuration` object plus a handful of named
+custom keys, grouped by meaning instead of a flat key list. Called once from
+the `initWithRemoteConfig` completion callback:
+
+```kotlin
+private fun logRemoteConfigTestResults(fetchSuccess: Boolean) {
+    val mgr = AdMobManager.getInstance(this)
+    val config = mgr.remoteConfig.getRemoteAdConfig()
+
+    logEnvironmentBlock("debug_ad_configuration", config.debug)
+    logEnvironmentBlock("release_ad_configuration", config.release)
+    logResolvedNativeDesigns(mgr)   // logs adIdFor(...) for every native placement
+    logCustomValues(mgr)            // logs named custom keys via getRemoteString/getRemoteJson
+}
+```
+
+`logCustomValues` is intentionally explicit about which custom keys it prints
+— it isn't a generic enumeration, it's whichever keys you've added a log line
+for (`user_custom_value`, `user_custom_json`, …). Copy this pattern (it's
+self-contained) into your own app and add a line per custom key you own.
+
+### Other built-in debug helpers on `AdsRemoteConfig`
+
+```kotlin
+rc.logAdConfiguration(BuildConfig.DEBUG)                 // full structured dump, as above
+rc.logRemoteConfigStatus()                               // one-line fetch status
+rc.testRemoteConfigKeys(listOf("user_custom_value"))      // Map<key, Pair<value, source>> for keys you name
+```
+
 ## Firebase console setup
 
 1. Remote Config → **Add parameter** → key `ad_configuration`, type **JSON**
