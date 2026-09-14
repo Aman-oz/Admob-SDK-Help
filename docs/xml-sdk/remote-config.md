@@ -255,4 +255,4 @@ rc.testRemoteConfigKeys(listOf("user_custom_value"))      // Map<key, Pair<value
 - [ ] Malformed JSON in console → parser falls back to the bundled default, app keeps running
 - [ ] Release build reads `release_ad_configuration` only
 
-If something isn't behaving, see [Troubleshooting](/troubleshooting#remote-config-values-look-stale).
+If something isn't behaving, see [Troubleshooting](/xml-sdk/troubleshooting#remote-config-values-look-stale).

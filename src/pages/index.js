@@ -5,7 +5,7 @@ import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import Reveal from '@site/src/components/Reveal';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
-import AdFormatGrid from '@site/src/components/AdFormatGrid';
+import SdkChooser from '@site/src/components/SdkChooser';
 import styles from './index.module.css';
 
 function HomepageHeader() {
@@ -27,11 +27,11 @@ function HomepageHeader() {
         </Reveal>
         <Reveal delay={120}>
           <div className={styles.buttons}>
-            <Link className="button button--secondary button--lg" to="/getting-started">
-              Get Started
+            <Link className="button button--secondary button--lg" to="/xml-sdk/overview">
+              XML SDK docs
             </Link>
-            <Link className="button button--outline button--lg" to="/ad-formats">
-              Browse Ad Formats
+            <Link className="button button--outline button--lg" to="/compose-sdk/overview">
+              Compose SDK docs
             </Link>
           </div>
         </Reveal>
@@ -45,11 +45,11 @@ export default function Home() {
   return (
     <Layout
       title={siteConfig.title}
-      description="Internal integration reference for the Ozi AdMob Next-Gen SDK — ads, remote config, and navigation, kept in sync across every app.">
+      description="Internal integration reference for the Ozi AdMob Next-Gen SDK — ads and remote config, for both the XML/View SDK and the Jetpack Compose SDK.">
       <HomepageHeader />
       <main>
+        <SdkChooser />
         <HomepageFeatures />
-        <AdFormatGrid />
       </main>
     </Layout>
   );

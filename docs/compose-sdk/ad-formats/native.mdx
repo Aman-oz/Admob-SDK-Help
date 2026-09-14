@@ -1,0 +1,129 @@
+---
+sidebar_position: 6
+title: Native Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="native"
+  title="Native Ads"
+  description="Two ways in: NativeAd() for full control over layout via slot Composables, or NativeAdCard() — a ready-styled, theme-aware card — when you don't need a custom design." />
+
+```kotlin
+val nativeAdLoader = AdMobManager.getInstance(application).nativeAdLoader
+```
+
+## Quick — `NativeAdCard()`
+
+The fast path. Fully styled from the placement's Remote Config
+`native_ad_design` palette (light/dark), no layout work required:
+
+```kotlin
+NativeAdCard(
+    placementKey = AdPlacementKeys.HOME_NATIVE,
+    point = AdConstants.Points.HOME,
+    showMedia = true,
+    isDarkTheme = LocalIsDarkTheme.current, // or omit to use isSystemInDarkTheme()
+)
+```
+
+## Full control — `NativeAd()` + slot Composables
+
+Build your own layout using the slot Composables inside `NativeAdViewScope` —
+this is what `NativeAdCard()` itself is built from:
+
+```kotlin
+NativeAd(placementKey = AdPlacementKeys.HOME_NATIVE, point = point) { ad, colors ->
+    NativeAdViewScope(nativeAd = ad) {
+        Column {
+            Row {
+                NativeAdIconView { ad.icon?.drawable?.let { /* Image(...) */ } }
+                NativeAdHeadlineView { Text(ad.headline.orEmpty()) }
+                NativeAdAttribution()
+                NativeAdChoicesView()
+            }
+            NativeAdMediaView(Modifier.fillMaxWidth())
+            NativeAdCallToActionView { performAdClick ->
+                Button(onClick = performAdClick) { Text(ad.callToAction.orEmpty()) }
+            }
+        }
+    }
+}
+```
+
+:::danger[Always call `performAdClick()` inside `NativeAdCallToActionView`]
+`NativeAdCallToActionView`'s content lambda hands you a `performAdClick: () -> Unit`
+callback — any clickable inside **must** call it, or the click is silently
+swallowed. Compose's own `clickable`/`Button onClick` consumes the touch
+before the SDK's View-level click listener ever sees it, so wiring a plain
+`Button(onClick = { /* your own logic */ })` without calling `performAdClick()`
+looks fine in a preview and simply never registers as an ad click in
+production.
+:::
+
+Available slot Composables (all require being inside `NativeAdViewScope`):
+`NativeAdHeadlineView`, `NativeAdBodyView`, `NativeAdIconView`,
+`NativeAdAdvertiserView`, `NativeAdPriceView`, `NativeAdStoreView`,
+`NativeAdStarRatingView`, `NativeAdCallToActionView` (the one that hands back
+`performAdClick`), `NativeAdMediaView` (a real SDK `MediaView`, not a
+`ComposeView` — required by policy if you show media), `NativeAdChoicesView`
+(a real `AdChoicesView`, minimum 15×15dp, required by policy), and
+`NativeAdAttribution` (a plain "Ad" badge, no SDK registration needed).
+
+## Muting the media video
+
+Both `NativeAd()` and `NativeAdCard()` take `startVideoMuted: Boolean = true`.
+Unlike a request-only hint, the loader **enforces** it at runtime
+(`VideoController.mute(true)`) after load, since some ad sources ignore the
+request-level flag — a stronger guarantee than the XML SDK's equivalent:
+
+```kotlin
+NativeAdCard(placementKey = placementKey, startVideoMuted = false) // splash-style placement, sound allowed
+```
+
+## Full parameters
+
+```kotlin
+@Composable
+fun NativeAd(
+    placementKey: String,
+    modifier: Modifier = Modifier,
+    point: String? = null,
+    refreshMillis: Long? = null,      // null = use AdController.nativeAdRefreshTime
+    startVideoMuted: Boolean = true,
+    isDarkTheme: Boolean? = null,     // null = isSystemInDarkTheme()
+    placeholder: @Composable (() -> Unit)? = null,
+    onLoaded: ((Boolean) -> Unit)? = null,
+    content: @Composable (ad: NativeAd, colors: NativeAdColors) -> Unit,
+)
+
+@Composable
+fun NativeAdCard(
+    placementKey: String,
+    modifier: Modifier = Modifier,
+    point: String? = null,
+    refreshMillis: Long? = null,
+    showMedia: Boolean = true,
+    startVideoMuted: Boolean = true,
+    isDarkTheme: Boolean? = null,
+    placeholder: @Composable (() -> Unit)? = null,
+    onLoaded: ((Boolean) -> Unit)? = null,
+)
+```
+
+`refreshMillis` (or the placement's Remote Config `native_ad_refresh_time`
+when omitted) drives an internal loop: load → show → wait → load the
+*next* ad before destroying the outgoing one (to avoid a flicker) → repeat.
+Pass `0` (or leave the config value at `0`) to load once and never refresh.
+
+`colors` (the second argument to `NativeAd()`'s `content` lambda) comes from
+`AdMobManager.nativeColorsFor(placementKey, isDark)` — the same
+Remote-Config-resolved palette `NativeAdCard()` uses internally, in case you
+want the design-system colors while still building your own layout.
+
+## Gotchas
+
+- **`ad_media` policy requirement**: if you show media at all, `NativeAdMediaView` is mandatory — it's a real SDK view, not optional decoration.
+- **The refresh loop only advances past a load failure by waiting `refreshMillis` and retrying** — it doesn't back off or give up; a placement stuck failing will keep quietly retrying at that interval.
+- Explicit builder-level customization isn't part of this API the way `NativeAdBuilder` works on the XML SDK — styling comes from the Remote Config `native_ad_design` palette (via `colors`) plus whatever Compose styling you apply around the slot Composables yourself.

@@ -74,34 +74,16 @@ const config = {
         },
         items: [
           {
-            type: 'doc',
-            docId: 'overview',
+            type: 'docSidebar',
+            sidebarId: 'xmlSidebar',
             position: 'left',
-            label: 'Overview',
+            label: 'XML SDK',
           },
           {
-            type: 'doc',
-            docId: 'getting-started',
+            type: 'docSidebar',
+            sidebarId: 'composeSidebar',
             position: 'left',
-            label: 'Getting Started',
-          },
-          {
-            type: 'doc',
-            docId: 'ad-formats/index',
-            position: 'left',
-            label: 'Ad Formats',
-          },
-          {
-            type: 'doc',
-            docId: 'remote-config',
-            position: 'left',
-            label: 'Remote Config',
-          },
-          {
-            type: 'doc',
-            docId: 'troubleshooting',
-            position: 'right',
-            label: 'Troubleshooting',
+            label: 'Compose SDK',
           },
           {
             to: '/team',
@@ -114,24 +96,27 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: 'XML SDK',
             items: [
-              {label: 'Overview', to: '/overview'},
-              {label: 'Getting Started', to: '/getting-started'},
-              {label: 'Ad Formats', to: '/ad-formats'},
-              {label: 'Remote Config', to: '/remote-config'},
+              {label: 'Overview', to: '/xml-sdk/overview'},
+              {label: 'Getting Started', to: '/xml-sdk/getting-started'},
+              {label: 'Ad Formats', to: '/xml-sdk/ad-formats'},
+              {label: 'Remote Config', to: '/xml-sdk/remote-config'},
+              {label: 'Troubleshooting', to: '/xml-sdk/troubleshooting'},
             ],
           },
           {
-            title: 'More',
+            title: 'Compose SDK',
             items: [
-              {label: 'Navigation Configuration', to: '/navigation-configuration'},
-              {label: 'Analytics & Consent', to: '/analytics-consent'},
-              {label: 'Troubleshooting', to: '/troubleshooting'},
+              {label: 'Overview', to: '/compose-sdk/overview'},
+              {label: 'Getting Started', to: '/compose-sdk/getting-started'},
+              {label: 'Ad Formats', to: '/compose-sdk/ad-formats'},
+              {label: 'Remote Config', to: '/compose-sdk/remote-config'},
+              {label: 'Troubleshooting', to: '/compose-sdk/troubleshooting'},
             ],
           },
         ],
-        copyright: `Internal documentation — Ozi Technology · com.ozi.admob:ads (Next-Gen line) · © ${new Date().getFullYear()}`,
+        copyright: `Internal documentation — Ozi Technology · com.ozi.admob:ads · © ${new Date().getFullYear()}`,
       },
       prism: {
         theme: prismThemes.github,

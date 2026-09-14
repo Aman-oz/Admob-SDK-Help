@@ -83,7 +83,7 @@ just the bottom one via Remote Config without touching the top).
 Disabled placement → callback fires `false` **and** the container is
 collapsed (`GONE`, shimmer hidden) — you don't need to hide the layout
 yourself. Full semantics in
-[Remote Config](/remote-config#disabled-placement-callback-semantics).
+[Remote Config](/xml-sdk/remote-config#disabled-placement-callback-semantics).
 
 ## Full API
 
@@ -122,4 +122,4 @@ fun destroy(adUnitId: String)
 - **Adaptive and collapsible size themselves via `Utilities.getAdSize(activity)`** — make sure `frameLayout`'s width reflects the actual screen width at call time (e.g. not measured before rotation settles).
 - **Collapsible passes `isTop` as a request, not a guarantee** — AdMob may still choose not to collapse depending on inventory; don't build layout logic that assumes it always collapses.
 - Always call `destroyForPlacement(placementKey)` (or `destroy()` for the raw-ID API) when the hosting screen is destroyed, to release the underlying ad view.
-- Give each banner slot its own `point`, even when two slots share a placement key — see [Remote Config → Per-point control](/remote-config#per-point-control).
+- Give each banner slot its own `point`, even when two slots share a placement key — see [Remote Config → Per-point control](/xml-sdk/remote-config#per-point-control).

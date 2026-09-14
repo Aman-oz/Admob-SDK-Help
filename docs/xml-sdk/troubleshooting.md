@@ -9,7 +9,7 @@ title: Troubleshooting
 
 1. Verify internet connection (`Utilities.isNetworkAvailable`)
 2. Check premium status: `AdMobManager.isPremium` — remember it's a
-   process-wide static, see [Frequency & Premium Controls](/frequency-premium-controls)
+   process-wide static, see [Frequency & Premium Controls](/xml-sdk/frequency-premium-controls)
 3. Use test ad unit IDs in debug builds (below)
 4. Check logs: `adb logcat | grep "Monetization"`
 5. Verify the AdMob App ID in `AndroidManifest.xml` matches what you passed as `appId` to `initialize`/`initWithRemoteConfig`
@@ -23,7 +23,7 @@ title: Troubleshooting
 - Confirm you're not accidentally mixing the `loadAd`/`showAd` flow with `loadAndShowAd` — they track separate loaded-ad state
 
 #### Native ad not loading
-- Layout is missing `ad_media`, or another required ID doesn't match exactly — see [Native Ads](/ad-formats/native)
+- Layout is missing `ad_media`, or another required ID doesn't match exactly — see [Native Ads](/xml-sdk/ad-formats/native)
 - Root tag / `MediaView` still point at the legacy `com.google.android.gms.ads.nativead` package instead of `com.google.android.libraries.ads.mobile.sdk.nativead`
 - Prefer the preload pattern for more reliable timing on screens reached right after another one
 

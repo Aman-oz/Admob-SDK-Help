@@ -34,7 +34,7 @@ interstitialAdLoader.loadAndShowAdForPlacement(
 }
 ```
 
-If you're on [Remote Config](/remote-config), the global `ads_enabled: false`
+If you're on [Remote Config](/xml-sdk/remote-config), the global `ads_enabled: false`
 kill switch behaves the same way — it's the remote equivalent of premium, for
 suppressing ads without a release.
 

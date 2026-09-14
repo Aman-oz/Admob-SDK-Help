@@ -14,7 +14,7 @@ are Activities or Fragments.
 - Flow logic is driven by one Remote Config key, **`navigation_configuration`**,
   carrying **flow numbers only — no ad unit IDs**. Ads are shown through your
   existing `AdMobManager` (IDs come from `ad_configuration` — see
-  [Remote Config](/remote-config)).
+  [Remote Config](/xml-sdk/remote-config)).
 - It reuses the **same Firebase fetch** as the ad config — nothing extra to fetch.
 
 ## Integration at a glance
@@ -187,7 +187,7 @@ class AppNavigationHost(
 implements the flow can pass its own token (or `null`) so a single shared
 interstitial placement stays independently blockable per navigation step, the
 same mechanism described in
-[Remote Config → Per-point control](/remote-config#per-point-control).
+[Remote Config → Per-point control](/xml-sdk/remote-config#per-point-control).
 
 ## 4. Language / Onboarding / Premium screens
 

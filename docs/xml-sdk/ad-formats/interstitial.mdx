@@ -25,7 +25,7 @@ before the user has done anything reads as a mistake, not monetization.
 ## Use the placement-key methods — this is what every screen in the sample app does
 
 Every method takes an `AdPlacementKeys` constant instead of a raw ad unit ID —
-the SDK resolves the real ID from [Remote Config](/remote-config) (or the
+the SDK resolves the real ID from [Remote Config](/xml-sdk/remote-config) (or the
 bundled default JSON) and checks the placement's enable flag for you. This is
 the **only** pattern used anywhere in the sample app (`app/`) — there is no
 live call site left that hardcodes an ad unit ID.
@@ -77,7 +77,7 @@ interstitialAdLoader.loadAndShowAdForPlacement(
 `point` is a free-form, per-call-site token (here `"load_and_show_inter_ad"`)
 that lets Remote Config block **this specific call site** without touching
 other screens that share the same placement — see
-[Remote Config → Per-point control](/remote-config#per-point-control). Passing
+[Remote Config → Per-point control](/xml-sdk/remote-config#per-point-control). Passing
 `null` (or omitting it) means "not individually blockable."
 
 ## Which method to call
@@ -132,7 +132,7 @@ interstitialAdLoader.showAdWithTimeAndCounterForPlacement(
 **Disabled-placement behavior differs by method** — `loadAdForPlacement`
 reports `false` when disabled, but every `show*/loadAndShow*ForPlacement`
 variant reports **`true`** so navigation still proceeds. Full table in
-[Remote Config](/remote-config#disabled-placement-callback-semantics).
+[Remote Config](/xml-sdk/remote-config#disabled-placement-callback-semantics).
 
 ## Full API
 
@@ -174,4 +174,4 @@ used.
 - **`loadAdForPlacement`/`showAdForPlacement` and `loadAndShowAdForPlacement` are fully independent** — loading via one doesn't make `isAdLoadedForPlacement` true for the other's flow. Pick one pattern per call site.
 - **`resetFrequencyCap()`** clears the counter/time state if you need to force a fresh pacing cycle (e.g. after a premium purchase is refunded).
 - Always act on the callback (`onSuccessListener`) to continue navigation — never assume the ad showed.
-- Give each call site its own `point` string (the sample app uses ones like `"btn_load_inter_ad"`, `"load_and_show_inter_ad"`) so a placement can be selectively blocked later without a code change — see [Remote Config → Per-point control](/remote-config#per-point-control).
+- Give each call site its own `point` string (the sample app uses ones like `"btn_load_inter_ad"`, `"load_and_show_inter_ad"`) so a placement can be selectively blocked later without a code change — see [Remote Config → Per-point control](/xml-sdk/remote-config#per-point-control).

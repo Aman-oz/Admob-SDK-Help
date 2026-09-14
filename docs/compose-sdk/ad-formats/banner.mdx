@@ -1,0 +1,64 @@
+---
+sidebar_position: 5
+title: Banner Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="banner"
+  title="Banner Ads"
+  description="A Composable, not an imperative loader call. BannerAd() sizes itself from its own layout constraints (BoxWithConstraints), loads on entering composition, and destroys itself on leaving — you never manage its lifecycle by hand." />
+
+```kotlin
+BannerAd(
+    placementKey = AdPlacementKeys.HOME_BANNER,
+    type = BannerType.ADAPTIVE,
+    point = AdConstants.Points.HOME,
+)
+```
+
+## Which type
+
+`BannerType` has three values:
+
+| Type | Use when |
+|---|---|
+| `ADAPTIVE` | Default choice for content screens — auto-sizes to the Composable's own width, Google's recommendation |
+| `MEDIUM_REC` | Blog/article readers, news feeds — fixed 300×250, higher CTR, takes more space |
+| `COLLAPSABLE` | Screens with limited vertical space — requests a collapse to a bottom-anchored bar (a request, not a guarantee — depends on inventory) |
+
+```kotlin
+BannerAd(placementKey = placement, type = BannerType.MEDIUM_REC, point = point)
+BannerAd(placementKey = placement, type = BannerType.COLLAPSABLE, point = point)
+```
+
+## Full parameters
+
+```kotlin
+@Composable
+fun BannerAd(
+    placementKey: String,
+    modifier: Modifier = Modifier,
+    type: BannerType = BannerType.ADAPTIVE,
+    point: String? = null,
+    placeholder: @Composable (() -> Unit)? = null,
+    onLoaded: ((Boolean) -> Unit)? = null,
+)
+```
+
+- `placeholder` — full override for the loading state. Default is a plain sized box (250dp tall for `MEDIUM_REC`, 90dp for `ADAPTIVE`/`COLLAPSABLE`) so the layout doesn't jump when the ad arrives.
+- Once loading finishes and failed, `BannerAd` renders **nothing** — no placeholder, no reserved space. A permanently-disabled or failed placement doesn't leave a dead gap in your layout.
+- In `@Preview`/inspection mode, only the placeholder renders — never a real ad request.
+
+## Behavior worth knowing
+
+- **Sizing comes from the Composable's own width**, via `BoxWithConstraints` — not the window. This is the one deliberate divergence from the XML SDK's `getAdSize(activity)`, and it's what makes banners behave correctly inside padding, bottom sheets, and split-screen.
+- **Collapsible passes a request, not a guarantee** — it's implemented via `putAdSourceExtrasBundle(AdMobAdapter::class.java, Bundle().apply { putString("collapsible", "bottom") })`, the same adapter-extras mechanism the XML SDK uses. AdMob may still choose not to collapse depending on inventory.
+- **Banners auto-refresh server-side** — a `bannerAdRefreshCallback` logs refresh success/failure, but you don't need to do anything to keep it current.
+- Destroying on exit is automatic (`DisposableEffect` calls `destroy()` on the underlying ad) — a WebView leak otherwise, so don't try to keep a `BannerAd` alive outside its Composable's lifecycle.
+
+## Gotchas
+
+- Give `BannerAd` a `Modifier` that actually constrains its width (e.g. `fillMaxWidth()`) — since sizing derives from the Composable's own measured width, an unconstrained parent can produce an unexpectedly large or small ad size.
+- Use a distinct `point` per screen even when two banners share a placement key, so one can be blocked later without touching the other — see [Remote Config → Per-point control](/compose-sdk/remote-config#per-point-control).

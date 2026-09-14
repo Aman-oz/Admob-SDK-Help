@@ -66,7 +66,7 @@ private fun initConsent() {
 ```
 
 There's also a preload variant used on the splash screen in the
-[Navigation Configuration](/navigation-configuration) flow
+[Navigation Configuration](/xml-sdk/navigation-configuration) flow
 (`consentManager.preLoadConsent(activity, isTest)` /
 `showPreLoadGDPRConsent(activity, isTest) { success -> }`), which warms the
 consent form so it can be shown without an extra network round-trip delay.

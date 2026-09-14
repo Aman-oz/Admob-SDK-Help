@@ -1,0 +1,75 @@
+---
+sidebar_position: 1
+title: Ad Formats
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+# Ad Formats
+
+All five formats are reached the same way, through the singleton:
+
+```kotlin
+val ads = AdMobManager.getInstance(application)
+val interstitialAdLoader = ads.interstitialAdLoader
+val rewardedAdLoader = ads.rewardedAdLoader
+val appOpenAdLoader = ads.appOpenAdLoader
+// Banner and Native are Composables — you don't reach a loader object for
+// these directly in UI code, see their pages below.
+```
+
+Every load/show method takes an `AdPlacementKeys` constant, an optional
+`point` (for per-call-site blocking — see
+[Remote Config](/compose-sdk/remote-config#per-point-control)), and resolves
+the real ad unit ID from Remote Config internally. There is no raw-ad-unit-ID
+"manual" path documented here the way the XML SDK has one — every loader in
+this SDK is placement-first by design.
+
+<AdFormatHero
+  format="app-open"
+  title="App Open & Resume"
+  description="Shown while the app itself is loading — cold start (start ad) or coming back from the background (resume ad, backed by the SDK's own preload buffer).">
+  [Full guide →](/compose-sdk/ad-formats/app-open-resume)
+</AdFormatHero>
+
+<AdFormatHero
+  format="interstitial"
+  title="Interstitial"
+  description="A full-screen ad between two pieces of content — one-shot load, never the SDK's preloader, so a load-and-show flow can never loop.">
+  [Full guide →](/compose-sdk/ad-formats/interstitial)
+</AdFormatHero>
+
+<AdFormatHero
+  format="rewarded"
+  title="Rewarded"
+  description="A full-screen video the user opts into by watching, in exchange for a reward. Reward is only granted on a completed view.">
+  [Full guide →](/compose-sdk/ad-formats/rewarded)
+</AdFormatHero>
+
+<AdFormatHero
+  format="banner"
+  title="Banner"
+  description="A Composable, not an imperative call — BannerAd() sizes itself from its own layout constraints and tears itself down when it leaves composition.">
+  [Full guide →](/compose-sdk/ad-formats/banner)
+</AdFormatHero>
+
+<AdFormatHero
+  format="native"
+  title="Native"
+  description="NativeAd() gives you full control over layout via slot Composables; NativeAdCard() is a ready-styled, theme-aware card for when you don't need custom layout.">
+  [Full guide →](/compose-sdk/ad-formats/native)
+</AdFormatHero>
+
+## Quick picker
+
+| I want to... | Use |
+|---|---|
+| Monetize a natural break in the flow (finished action, level, share) | [Interstitial](/compose-sdk/ad-formats/interstitial) `loadAndShowAdForPlacement` |
+| Reward a user for opting in to watch a video | [Rewarded](/compose-sdk/ad-formats/rewarded) |
+| Keep a small ad visible while the user reads/scrolls | [Banner](/compose-sdk/ad-formats/banner) — `BannerType.ADAPTIVE` |
+| Get a higher-CTR block ad on an article/blog screen | [Banner](/compose-sdk/ad-formats/banner) — `BannerType.MEDIUM_REC` |
+| Save vertical space on a tight layout | [Banner](/compose-sdk/ad-formats/banner) — `BannerType.COLLAPSABLE` |
+| Blend an ad into a list/feed with your own layout | [Native](/compose-sdk/ad-formats/native) — `NativeAd()` + slot Composables |
+| Drop in a native ad without building a layout | [Native](/compose-sdk/ad-formats/native) — `NativeAdCard()` |
+| Monetize app cold start or return-from-background | [App Open & Resume](/compose-sdk/ad-formats/app-open-resume) |
+| Show a loading dialog while any of the above loads | [Loading Dialog](/compose-sdk/loading-dialog) |

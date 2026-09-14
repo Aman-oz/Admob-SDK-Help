@@ -1,0 +1,125 @@
+---
+sidebar_position: 2
+title: Interstitial Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="interstitial"
+  title="Interstitial Ads"
+  description="A full-screen ad shown between two pieces of content. Backed by the Next-Gen SDK's suspend InterstitialAd.load — a deliberate one-shot load, never the SDK's self-refilling preloader, since a preloader's callback re-fires on every refill and would turn a load-and-show flow into a loop." />
+
+```kotlin
+val interstitialAdLoader = AdMobManager.getInstance(application).interstitialAdLoader
+```
+
+:::danger[Never show on a screen's own first composition]
+Interstitials belong **after a completed user action** — not the first thing
+a screen shows. Trigger `loadAndShowAdForPlacement` from a button's
+`onClick`, not from a bare `LaunchedEffect(Unit)` on entering the screen.
+:::
+
+## The three call shapes
+
+| Method | When |
+|---|---|
+| `loadAndShowAdForPlacement` | Simplest — load then show right after a completed action |
+| `loadAdForPlacement` + `showAdForPlacement` | Preload on the previous screen, show on this one |
+| `showAndLoadAdForPlacement` | Show what's loaded (or load fresh) **and** warm the next one right after — steady state for repeated moments (level complete, back press) |
+
+```kotlin
+interstitialAdLoader.loadAndShowAdForPlacement(
+    activity = activity,
+    placementKey = AdPlacementKeys.INTERNAL_APP_INTERSTITIAL,
+    point = AdConstants.Points.TEST_SCREEN,
+    onAdVisible = { /* hide your own loading UI, if not using showDialog */ },
+) { proceed ->
+    // Continue regardless — never block navigation on ad success
+    goToNextScreen()
+}
+```
+
+### Preload / show-later
+
+```kotlin
+// Previous screen
+interstitialAdLoader.loadAdForPlacement(placementKey, point = point) { loaded -> }
+
+// Next screen
+interstitialAdLoader.showAdForPlacement(activity, placementKey, point, showForcefully = false) { proceed -> }
+```
+
+### Steady-state — show now, warm the next one
+
+```kotlin
+interstitialAdLoader.showAndLoadAdForPlacement(
+    activity = activity,
+    placementKey = placementKey,
+    point = point,
+) { proceed ->
+    // The next ad for this placement is already loading by the time this fires
+    goToNextScreen()
+}
+```
+
+## Loading dialog while it loads
+
+Every method above takes `showDialog`, `dialogTimeout`, and `dialogModel`
+parameters — the loader shows and hides a real dialog itself, you don't have
+to manage a `Boolean` state and an overlay Composable yourself:
+
+```kotlin
+interstitialAdLoader.loadAndShowAdForPlacement(
+    activity = activity,
+    placementKey = placementKey,
+    point = point,
+    showDialog = true, // default for loadAndShow/showAndLoad — false for showAdForPlacement
+    dialogModel = LoadingDialogModel(text = "Loading ad…"),
+) { proceed -> goToNextScreen() }
+```
+
+See [Loading Dialog](/compose-sdk/loading-dialog) for the full customization
+surface (Lottie animation, colors, a full `content` override) and exactly
+when `dialogTimeout` kicks in.
+
+## Full API
+
+```kotlin
+fun loadAdForPlacement(placementKey: String, point: String? = null, onLoaded: ((Boolean) -> Unit)? = null)
+
+fun showAdForPlacement(
+    activity: Activity, placementKey: String, point: String? = null,
+    showForcefully: Boolean = false, showDialog: Boolean = false,
+    dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(),
+    onComplete: ((Boolean) -> Unit)? = null,
+)
+
+fun loadAndShowAdForPlacement(
+    activity: Activity, placementKey: String, point: String? = null,
+    timeoutMillis: Long = 10_000L, showDialog: Boolean = true,
+    dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(),
+    onAdVisible: (() -> Unit)? = null, onComplete: ((Boolean) -> Unit)? = null,
+)
+
+fun showAndLoadAdForPlacement(
+    activity: Activity, placementKey: String, point: String? = null,
+    timeoutMillis: Long = 10_000L, showDialog: Boolean = true,
+    dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(),
+    onAdVisible: (() -> Unit)? = null, onComplete: ((Boolean) -> Unit)? = null,
+)
+
+fun isAdLoaded(adUnitId: String): Boolean
+fun resetFrequencyCap()
+fun destroy()
+```
+
+`resetFrequencyCap()` clears the pacing counter/timer — called automatically
+by `AdMobManager` after an app-open/resume ad shows, so an interstitial
+doesn't fire immediately behind one.
+
+## Gotchas
+
+- **Two independent flows, on purpose.** `loadAdForPlacement`/`showAdForPlacement` and `loadAndShowAdForPlacement` don't share warmed state the way you might expect from the XML SDK's cache — this SDK uses one-shot loads per flow, so pick one pattern per call site rather than mixing them for the same placement.
+- **`showAdForPlacement` defaults `showDialog` to `false`** (an already-warmed ad shows almost instantly); `loadAndShowAdForPlacement`/`showAndLoadAdForPlacement` default it to `true` (there's a real network wait). Override either way per call.
+- Give each call site its own `point` (`AdConstants.Points` in the sample app) so a shared placement can be blocked at just that spot later — see [Remote Config → Per-point control](/compose-sdk/remote-config#per-point-control).

@@ -1,0 +1,111 @@
+---
+sidebar_position: 3
+title: Rewarded Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="rewarded"
+  title="Rewarded Ads"
+  description="A full-screen video the user opts into, in exchange for a reward. Deliberately one-shot loads, never a preloader — warm ads are held by this loader and consumed exactly once." />
+
+```kotlin
+val rewardedAdLoader = AdMobManager.getInstance(application).rewardedAdLoader
+```
+
+Always gate rewarded ads behind an **explicit user action** — a "Watch ad to
+unlock" button, never an automatic trigger.
+
+```kotlin
+Button(onClick = {
+    rewardedAdLoader.loadAndShowAdForPlacement(
+        activity = activity,
+        placementKey = AdPlacementKeys.ON_ACTION_REWARDED_VIDEO,
+        point = AdConstants.Points.TEST_SCREEN,
+    ) { earned ->
+        if (earned) {
+            unlockPremiumFeatures()
+        } else {
+            showToast("Watch the full ad to unlock")
+        }
+    }
+}) {
+    Text("Watch ad to unlock")
+}
+```
+
+`earned` is only `true` if the user watched to completion, or if
+`AdMobManager.isPremium` is set (premium users are granted the reward without
+watching anything).
+
+## Preload, then show separately
+
+```kotlin
+// Preload ahead of time
+rewardedAdLoader.loadAdForPlacement(placementKey, point = point) { loaded -> }
+
+// On button click, later
+rewardedAdLoader.showAdForPlacement(activity, placementKey, point) { earned ->
+    if (earned) unlockPremiumFeatures()
+}
+```
+
+`showAdForPlacement` shows whatever this loader currently has loaded for that
+placement — there's no per-ad-unit selection at show time.
+
+## Loading dialog while it loads
+
+`loadAndShowAdForPlacement` takes `showDialog`, `dialogTimeout`, and
+`dialogModel` — same mechanism as interstitial. `showAdForPlacement` never
+shows one, since by the time you call it an ad should already be warm:
+
+```kotlin
+rewardedAdLoader.loadAndShowAdForPlacement(
+    activity = activity,
+    placementKey = placementKey,
+    point = point,
+    dialogModel = LoadingDialogModel(text = "Loading your reward…"),
+) { earned -> }
+```
+
+See [Loading Dialog](/compose-sdk/loading-dialog) for the full customization
+surface.
+
+## Full API
+
+```kotlin
+fun loadAdForPlacement(placementKey: String, point: String? = null, onLoaded: ((Boolean) -> Unit)? = null)
+
+fun showAdForPlacement(activity: Activity, placementKey: String, point: String? = null, onRewardEarned: ((Boolean) -> Unit)? = null)
+
+fun loadAndShowAdForPlacement(
+    activity: Activity, placementKey: String, point: String? = null,
+    timeoutMillis: Long = 15_000L, showDialog: Boolean = true,
+    dialogTimeout: Long = 0L, dialogModel: LoadingDialogModel? = LoadingDialogModel(),
+    onAdVisible: (() -> Unit)? = null, onRewardEarned: ((Boolean) -> Unit)? = null,
+)
+
+fun isAdLoaded(adUnitId: String): Boolean
+fun destroy()
+```
+
+## Which placement keys
+
+Two pairs exist: `PREMIUM_ITEM_REWARDED_VIDEO` / `PREMIUM_ITEM_REWARDED_INTERSTITIAL`
+(unlocking premium content) and `ON_ACTION_REWARDED_VIDEO` /
+`ON_ACTION_REWARDED_INTERSTITIAL` (rewarding an in-context action) — pick
+whichever matches where the button lives.
+
+## Use cases
+
+- Unlock a premium feature temporarily
+- Remove ads for a fixed period
+- Bonus content / extra lives in a game
+- Any reward the user should have to actively opt into
+
+## Gotchas
+
+- `showAdForPlacement` has no ad-unit selection at show time — don't load a different placement between loading and showing if you plan to show this one.
+- Always branch on the `earned`/reward callback, not "did the ad show" — a user can close a rewarded ad early without earning anything.
+- A disabled or blocked (`point`) placement reports `false`, **not** `true` — unlike interstitial, a skipped rewarded ad must never grant a free reward.

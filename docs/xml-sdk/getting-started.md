@@ -116,7 +116,7 @@ programmatically rather than reading it from the manifest, so the no-`appId`
 overloads of `initialize`/`initWithRemoteConfig` exist only to throw
 `IllegalStateException` pointing back here.
 
-See [Remote Config](/remote-config) for the full JSON schema, shipping your
+See [Remote Config](/xml-sdk/remote-config) for the full JSON schema, shipping your
 own default JSON, and per-placement/point control.
 
 ### Alternative: manual configuration (no Remote Config)
@@ -165,6 +165,6 @@ private fun initConsent() {
 
 ## 5. You're set up — what's next
 
-- [Ad Formats](/ad-formats) — wire up each ad type at the spots your app needs them
-- [Navigation Configuration](/navigation-configuration) — if this app has a splash → onboarding → main journey
-- [Analytics & Consent](/analytics-consent) — event catalogue
+- [Ad Formats](/xml-sdk/ad-formats) — wire up each ad type at the spots your app needs them
+- [Navigation Configuration](/xml-sdk/navigation-configuration) — if this app has a splash → onboarding → main journey
+- [Analytics & Consent](/xml-sdk/analytics-consent) — event catalogue

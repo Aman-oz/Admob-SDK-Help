@@ -12,12 +12,11 @@ function GaugeIcon() {
   );
 }
 
-function RouteIcon() {
+function BlockIcon() {
   return (
     <svg viewBox="0 0 64 64" className={styles.icon}>
-      <circle cx="14" cy="16" r="6" fill="none" stroke="currentColor" strokeWidth="4" />
-      <circle cx="50" cy="48" r="6" fill="none" stroke="currentColor" strokeWidth="4" />
-      <path d="M14 22c0 16 36 8 36 26" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="6 6" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" strokeWidth="4" />
+      <line x1="17" y1="47" x2="47" y2="17" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -40,16 +39,16 @@ const FeatureList = [
       'Ad unit IDs and pacing live in one Firebase Remote Config JSON parameter. Change a value in the console and every app picks it up on its next fetch — no release needed.',
   },
   {
-    title: 'Config-driven navigation',
-    Icon: RouteIcon,
+    title: 'Per-point ad blocking',
+    Icon: BlockIcon,
     description:
-      'The splash → language → onboarding → main/premium journey is also driven by Remote Config flow numbers, so product can adjust the funnel without an app update.',
+      'A placement can be blocked at specific call sites via a "points" block-list in Remote Config, without touching the shared ad unit ID everywhere else it\'s used. Works the same way in both SDKs.',
   },
   {
-    title: 'One API, every app',
+    title: 'One API per track',
     Icon: LayersIcon,
     description:
-      "Method names, parameters, and placement keys are the same across every Ozi app that integrates this SDK — so patterns learned on one project transfer directly to the next.",
+      'Method names and placement keys are consistent across every app on the same SDK track — XML or Compose — so patterns learned on one project transfer directly to the next.',
   },
 ];
 

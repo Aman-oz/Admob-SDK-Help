@@ -1,0 +1,121 @@
+---
+sidebar_position: 4
+title: App Open & Resume Ads
+---
+
+import AdFormatHero from '@site/src/components/AdFormatHero';
+
+<AdFormatHero
+  format="app-open"
+  title="App Open & Resume Ads"
+  description="Two related placements, one loader: the start ad (cold launch, direct one-shot AppOpenAd.load with a 4-hour expiry check) and the resume ad (returning from background, backed by the SDK's AppOpenAdPreloader so one is always kept warm)." />
+
+```kotlin
+val appOpenAdLoader = AdMobManager.getInstance(application).appOpenAdLoader
+```
+
+`AppOpenAdLoader` registers itself on `Application.ActivityLifecycleCallbacks`
+and the process lifecycle in its constructor — it tracks the current activity
+and background/foreground transitions on its own; you don't feed it activity
+references except when explicitly calling `showStartAdIfAvailable`.
+
+:::info[No placement-key parameter]
+Unlike every other format, these methods take **no `AdPlacementKeys`
+parameter** — the loader always resolves the fixed `app_open` (start) and
+`app_open_resume` placements internally.
+:::
+
+## Start ad — first launch / splash
+
+The real pattern from the sample app's splash screen — gather consent, init,
+then load the start ad and splash interstitial in parallel:
+
+```kotlin
+DisposableEffect(Unit) {
+    ads.setSplash(true)
+    onDispose { ads.setSplash(false) } // MUST run, or resume ads never fire again
+}
+
+// After initWithRemoteConfig's completion callback:
+ads.appOpenAdLoader.loadStartAd { loaded ->
+    // ...
+}
+
+// On "Get Started" tap:
+ads.appOpenAdLoader.showStartAdIfAvailable { shown ->
+    // proceed to the splash interstitial / home, regardless of `shown`
+}
+```
+
+:::danger[`setSplash(true)` must be paired with `setSplash(false)`]
+Clear it in `onDispose` (or the splash screen's equivalent teardown) — forget
+this and automatic resume ads never fire again for the rest of the process.
+:::
+
+## Resume ad — returning from background
+
+You don't call `showResumeAdIfAvailable` yourself in the common case — the
+loader shows it automatically on the next foreground transition once
+`shouldShowResumeAd` is on and `openAdResumeTime` has elapsed in the
+background. Enable it once and optionally preload:
+
+```kotlin
+// once, e.g. in your Application or top-level composable
+ads.setOpenAdResumeTime(5)          // seconds in background before it's eligible
+    .setShouldShowResumeAd(true)
+
+// warm one so it's ready — safe to call repeatedly
+ads.appOpenAdLoader.loadResumeAd { loaded -> }
+```
+
+## Point-blocking a specific call site
+
+Both `load*`/`show*` methods have an overload taking `point: String` (no
+default — see the note below on why it's a separate overload rather than an
+added parameter):
+
+```kotlin
+ads.appOpenAdLoader.showStartAdIfAvailable(point = AdConstants.Points.SPLASH) { shown -> }
+ads.appOpenAdLoader.loadResumeAd(point = "settings") { loaded -> }
+```
+
+:::info[Why a separate overload, not just a new parameter]
+`loadResumeAd`/`loadStartAd`/`showStartAdIfAvailable`/`showResumeAdIfAvailable`
+each have a point-aware **sibling overload** rather than a `point` parameter
+added to the existing one. A defaulted parameter inserted at the end would
+collide with the existing trailing-lambda call sites (`loadStartAd { ok -> }`)
+— Kotlin's trailing-lambda sugar requires the lambda parameter to be last, so
+`point` sits before it on the overload that has it, and the no-point overload
+is left untouched for the common case.
+:::
+
+## Full API
+
+```kotlin
+fun loadStartAd(onLoaded: ((Boolean) -> Unit)? = null)
+fun loadStartAd(point: String?, onLoaded: ((Boolean) -> Unit)? = null)
+
+fun loadResumeAd(onLoaded: ((Boolean) -> Unit)? = null)
+fun loadResumeAd(point: String?, onLoaded: ((Boolean) -> Unit)? = null)
+
+fun showStartAdIfAvailable(onComplete: (Boolean) -> Unit)
+fun showStartAdIfAvailable(point: String? = null, onComplete: (Boolean) -> Unit)
+
+fun showResumeAdIfAvailable(onComplete: (Boolean) -> Unit)
+fun showResumeAdIfAvailable(point: String? = null, onComplete: (Boolean) -> Unit)
+
+fun isStartAdAvailable(): Boolean
+fun isResumeAdAvailable(): Boolean
+fun destroyAds()
+```
+
+No `showDialog`/`dialogModel` here — app open ads are shown at moments (cold
+start, foreground return) where a separate loading dialog on top of the
+splash screen's own UI would be redundant.
+
+## Gotchas
+
+- **`destroyAds()`** tears down both managers' state — call it wherever your app's process teardown happens.
+- **Start ads expire after 4 hours** — `StartAdManager` treats a stale one as unavailable and reloads rather than showing an expired ad.
+- **`AdMobManager.isPremium` is a process-wide static** — setting it anywhere disables the automatic resume-ad path everywhere, immediately.
+- The resume ad is backed by `AppOpenAdPreloader` (the SDK's own buffer) — the start ad is not, since it needs a fixed 4-hour expiry the preloader doesn't track for you.

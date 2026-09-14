@@ -45,10 +45,10 @@ reimplementing ad caching.
   app reads the same `ad_configuration` JSON parameter shape (~28 placements +
   pacing + native ad colors). Change a value in the console and every app
   picks it up on its next fetch — no release needed. See
-  [Remote Config](/remote-config).
+  [Remote Config](/xml-sdk/remote-config).
 - **The splash → language → onboarding → main/premium journey** is also
   config-driven, from one `navigation_configuration` parameter — see
-  [Navigation Configuration](/navigation-configuration).
+  [Navigation Configuration](/xml-sdk/navigation-configuration).
 - **The public API is deliberately stable.** Method names, parameters, and
   placement keys don't change between patch releases, so upgrading is a
   version-number bump, not a rewrite.
@@ -89,7 +89,7 @@ first:
 
 ## Next steps
 
-- New integration → [Getting Started](/getting-started)
-- Already integrated, adding a format → [Ad Formats](/ad-formats)
-- Changing ad IDs/pacing without a release → [Remote Config](/remote-config)
-- Wiring the splash/onboarding journey → [Navigation Configuration](/navigation-configuration)
+- New integration → [Getting Started](/xml-sdk/getting-started)
+- Already integrated, adding a format → [Ad Formats](/xml-sdk/ad-formats)
+- Changing ad IDs/pacing without a release → [Remote Config](/xml-sdk/remote-config)
+- Wiring the splash/onboarding journey → [Navigation Configuration](/xml-sdk/navigation-configuration)
