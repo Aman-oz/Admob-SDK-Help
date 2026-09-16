@@ -10,11 +10,14 @@ remote-driven configuration, and the splash → onboarding → main navigation f
 It exists so that pattern lives in **one place** instead of being re-implemented
 (and drifting) app by app.
 
-This site documents the **Next-Gen line** — the current `2.0.3`+ releases,
+This site documents the **Next-Gen line** — the current `2.0.4`+ releases,
 built on Google's [GMA Next-Gen SDK](https://developers.google.com/ad-manager/mobile-ads-sdk/android/next-gen)
-(`com.google.android.libraries.ads.mobile.sdk`) rather than the legacy
-`com.google.android.gms:play-services-ads`. The two ad SDKs cannot coexist in one
-APK, so this line excludes the legacy dependency at the Gradle level.
+(`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk`, currently
+**`1.3.1`**) rather than the legacy `com.google.android.gms:play-services-ads`.
+The two ad SDKs cannot coexist in one APK, so this line excludes the legacy
+dependency at the Gradle level. Adding mediation? See
+[Getting Started → Picking mediation adapter versions](/xml-sdk/getting-started#picking-mediation-adapter-versions)
+— adapter compatibility doesn't line up with this version number the way you'd expect.
 
 ## What it's a facade over
 

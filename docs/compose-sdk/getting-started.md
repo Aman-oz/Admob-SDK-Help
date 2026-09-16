@@ -36,7 +36,7 @@ never in a project repo.
 
 ```kotlin title="app/build.gradle.kts"
 dependencies {
-    implementation("com.ozi.admob.nextgen.compose:ads:1.0.1") // check the latest published version with your lead
+    implementation("com.ozi.admob.nextgen.compose:ads:1.0.2") // check the latest published version with your lead
 }
 ```
 
@@ -52,6 +52,36 @@ configurations.configureEach {
 }
 ```
 :::
+
+### Which Next-Gen SDK version this pulls in
+
+`com.ozi.admob.nextgen.compose:ads:1.0.2` depends on
+`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.3.1` — the same
+Next-Gen SDK version the XML SDK currently uses. You don't declare it
+yourself, but you need this number when picking mediation adapters.
+
+### Picking mediation adapter versions
+
+Same rule as the XML SDK: **a mediation adapter's stated minimum SDK version
+is in the legacy `play-services-ads` numbering scheme (e.g. "requires Google
+Mobile Ads SDK 22.x"), not this SDK's `ads-mobile-sdk` version (`1.3.1`)** —
+Google doesn't publish a Next-Gen-specific compatibility table, so don't try
+to match the two numbers against each other.
+
+What actually works:
+
+1. Keep the `play-services-ads`/`play-services-ads-lite` exclude above — every mediation adapter pulls the legacy SDK back in transitively otherwise.
+2. Pick the **latest published version** of each adapter you need — adapters are maintained forward-compatible with the current Next-Gen SDK; older adapter releases predating Next-Gen support are the risk, not newer ones.
+3. Verify at runtime, since there's no compatibility table to check against instead:
+   ```kotlin
+   MobileAds.initialize(context, InitializationConfig.Builder(appId).build()) { status ->
+       status.adapterStatusMap.forEach { (adapterClass, adapterStatus) ->
+           Log.d("Mediation", "$adapterClass -> ${adapterStatus.initializationState}")
+       }
+   }
+   ```
+   and after an ad loads, confirm the network you expect actually served it via `ad.responseInfo?.mediationAdapterClassName` — an adapter that "initializes" but never appears here isn't actually compatible, regardless of what its own version number implies.
+4. Confirm the network has a Next-Gen adapter published **at all** before committing to it for a revenue-earning app — not every legacy mediation partner has shipped one yet.
 
 ## 2. Manifest
 

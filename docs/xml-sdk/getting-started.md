@@ -42,7 +42,7 @@ Then in the app module:
 
 ```kotlin title="app/build.gradle.kts"
 dependencies {
-    implementation("com.ozi.admob:ads:2.0.3") // check the latest published version with your lead
+    implementation("com.ozi.admob:ads:2.0.4") // check the latest published version with your lead
 }
 ```
 
@@ -67,6 +67,50 @@ configurations.configureEach {
 }
 ```
 :::
+
+### Which Next-Gen SDK version this pulls in
+
+`com.ozi.admob:ads:2.0.4` depends on Google's
+`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.3.1` — that's
+the actual ad-serving SDK underneath this facade. You don't declare it
+yourself (it comes in transitively via `api(...)` in the library), but you
+need this number when picking mediation adapters — see below.
+
+### Picking mediation adapter versions
+
+If you add any mediation network (AppLovin, Meta, Unity Ads, etc.), the
+version you pick has to be compatible with the Next-Gen SDK underneath —
+picking an adapter version at random is the single most common cause of a
+mediation network that "initializes" but never actually serves an ad.
+
+:::warning[Adapters version against the *legacy* SDK number, not `ads-mobile-sdk`'s]
+Every mediation adapter's own changelog states a minimum requirement like
+*"requires Google Mobile Ads SDK 22.x or higher"* — that version number is
+from the **legacy** `play-services-ads` numbering scheme, not the Next-Gen
+`ads-mobile-sdk` version (`1.3.1`) this SDK actually uses. Google doesn't
+publish a separate Next-Gen-specific compatibility table — Next-Gen SDK
+ships the classes adapters expect as a forward-compatible stand-in for the
+legacy SDK, and there's no simple "1.3.1 = legacy X.Y.Z" conversion to look
+up. Don't try to match version *numbers* across the two schemes — they're
+unrelated.
+:::
+
+What actually works, in order:
+
+1. **Always keep the `play-services-ads`/`play-services-ads-lite` exclude above** — every mediation adapter you add will try to pull the legacy SDK back in transitively, and it will silently coexist-crash or duplicate-symbol-fail if you don't.
+2. **Pick the latest published version of each adapter you need.** Adapter maintainers keep them forward-compatible with the current Next-Gen SDK going forward; older adapter versions predating Next-Gen SDK support are the ones actually at risk, not newer ones.
+3. **Verify empirically, not by reading version numbers** — Google's own guidance for Next-Gen mediation is to check this at runtime rather than trust a compatibility table that doesn't exist:
+   ```kotlin
+   MobileAds.initialize(context, InitializationConfig.Builder(appId).build()) { status ->
+       status.adapterStatusMap.forEach { (adapterClass, adapterStatus) ->
+           Log.d("Mediation", "$adapterClass -> ${adapterStatus.initializationState}, ${adapterStatus.description}")
+       }
+   }
+   // After an ad loads:
+   Log.d("Mediation", "Served by: ${ad.responseInfo?.mediationAdapterClassName}")
+   ```
+   If an adapter's `initializationState` never reaches ready, or `mediationAdapterClassName` never shows that network even though it's configured, that adapter version isn't actually compatible — try the latest release of that adapter before assuming the network itself is the problem.
+4. **Before migrating a revenue-earning app, confirm the network has a Next-Gen adapter at all** — not every legacy mediation partner has shipped one. The Meta Audience Network adapter that the legacy `1.4.x` line ships, for example, is **not** a dependency on this Next-Gen line — check the [mediation network list](https://developers.google.com/admob/android/choose-networks) for Next-Gen support before committing to a network for a live app.
 
 ## 2. Manifest
 
