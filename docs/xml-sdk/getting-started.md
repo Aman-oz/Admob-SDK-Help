@@ -112,6 +112,58 @@ What actually works, in order:
    If an adapter's `initializationState` never reaches ready, or `mediationAdapterClassName` never shows that network even though it's configured, that adapter version isn't actually compatible — try the latest release of that adapter before assuming the network itself is the problem.
 4. **Before migrating a revenue-earning app, confirm the network has a Next-Gen adapter at all** — not every legacy mediation partner has shipped one. The Meta Audience Network adapter that the legacy `1.4.x` line ships, for example, is **not** a dependency on this Next-Gen line — check the [mediation network list](https://developers.google.com/admob/android/choose-networks) for Next-Gen support before committing to a network for a live app.
 
+### Standard mediation networks
+
+Every Ozi project should include these networks. **Versions are deliberately
+not pinned here** — adapter releases move independently of this SDK and a
+copy-pasted number goes stale fast. Get the current version for each,
+matched against the Next-Gen SDK version above, from the
+[official AdMob mediation page](https://developers.google.com/admob/android/mediation)
+before adding any of these:
+
+```kotlin title="app/build.gradle.kts"
+dependencies {
+    implementation("com.google.ads.mediation:applovin:<see official docs>")
+    implementation("com.google.ads.mediation:vungle:<see official docs>")
+    implementation("com.google.ads.mediation:facebook:<see official docs>")
+    implementation("com.google.ads.mediation:mintegral:<see official docs>")
+    implementation("com.google.ads.mediation:pangle:<see official docs>")
+    implementation("com.unity3d.ads:unity-ads:<see official docs>")     // Unity's own SDK
+    implementation("com.google.ads.mediation:unity:<see official docs>") // the AdMob adapter for it
+}
+```
+
+:::warning[Meta/Facebook — verify Next-Gen support before relying on it]
+This is the one network flagged above (point 4) as not shipping a Next-Gen
+adapter as of this SDK's last verified check. If your project needs Meta
+Audience Network, confirm on the official mediation page and via the
+runtime check above that it's actually initializing and serving on Next-Gen
+before treating it as production-ready — don't assume it works because it's
+in this list.
+:::
+
+Pangle needs its own Maven repository in addition to the adapter dependency
+— add it to the **existing** `dependencyResolutionManagement` block from
+step 1 above, not a separate `allprojects { repositories { ... } }` block.
+This project's `repositoriesMode` is set to `FAIL_ON_PROJECT_REPOS`, which
+specifically *rejects* per-module repository declarations like `allprojects`
+— the centralized block is the only place a new repository can go:
+
+```kotlin title="settings.gradle.kts"
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://artifact.bytedance.com/repository/pangle/") } // Pangle adapter
+        maven {
+            url = uri("sftp://172.16.3.122:22/home/altaf/maven-repo")
+            credentials { /* … */ }
+        }
+    }
+}
+```
+
 ## 2. Manifest
 
 ```xml title="AndroidManifest.xml"

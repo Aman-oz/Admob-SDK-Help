@@ -83,6 +83,56 @@ What actually works:
    and after an ad loads, confirm the network you expect actually served it via `ad.responseInfo?.mediationAdapterClassName` — an adapter that "initializes" but never appears here isn't actually compatible, regardless of what its own version number implies.
 4. Confirm the network has a Next-Gen adapter published **at all** before committing to it for a revenue-earning app — not every legacy mediation partner has shipped one yet.
 
+### Standard mediation networks
+
+Every Ozi project should include these networks. **Versions are deliberately
+not pinned here** — adapter releases move independently of this SDK. Get the
+current version for each, matched against the Next-Gen SDK version above,
+from the [official AdMob mediation page](https://developers.google.com/admob/android/mediation)
+before adding any of these:
+
+```kotlin title="app/build.gradle.kts"
+dependencies {
+    implementation("com.google.ads.mediation:applovin:<see official docs>")
+    implementation("com.google.ads.mediation:vungle:<see official docs>")
+    implementation("com.google.ads.mediation:facebook:<see official docs>")
+    implementation("com.google.ads.mediation:mintegral:<see official docs>")
+    implementation("com.google.ads.mediation:pangle:<see official docs>")
+    implementation("com.unity3d.ads:unity-ads:<see official docs>")     // Unity's own SDK
+    implementation("com.google.ads.mediation:unity:<see official docs>") // the AdMob adapter for it
+}
+```
+
+:::warning[Meta/Facebook — verify Next-Gen support before relying on it]
+Flagged above (point 4) as not shipping a Next-Gen adapter as of this SDK's
+last verified check. Confirm on the official mediation page and via the
+runtime check above that it's actually initializing and serving before
+treating it as production-ready — don't assume it works because it's in
+this list.
+:::
+
+Pangle needs its own Maven repository in addition to the adapter dependency
+— add it to the **existing** `dependencyResolutionManagement` block from
+step 1, not a separate `allprojects { repositories { ... } }` block. This
+project's `repositoriesMode` is `FAIL_ON_PROJECT_REPOS`, which specifically
+*rejects* per-module repository declarations — the centralized block is the
+only place a new repository can go:
+
+```kotlin title="settings.gradle.kts"
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://artifact.bytedance.com/repository/pangle/") } // Pangle adapter
+        maven {
+            url = uri("sftp://172.16.3.122:22/home/altaf/maven-repo-compose")
+            credentials { /* … */ }
+        }
+    }
+}
+```
+
 ## 2. Manifest
 
 Same as the XML SDK — the app ID is still passed programmatically (next
