@@ -95,6 +95,8 @@ yourself if you want to skip showing loading UI when offline:
 
 ```kotlin
 if (Utilities.isNetworkAvailable(context)) {
-    bannerAdLoader.showAdaptiveBanner(activity, shimmer, frame, adId)
+    bannerAdLoader.showAdaptiveBannerForPlacement(
+        activity, shimmer, frame, AdPlacementKeys.HOME_BANNER
+    ) { }
 }
 ```

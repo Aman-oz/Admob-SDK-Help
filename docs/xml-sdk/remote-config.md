@@ -21,6 +21,100 @@ ships bundled inside the library at `assets/ads_remote_config_defaults.json`,
 so ads work **offline, before the first fetch, and even without Firebase
 configured at all**.
 
+## Sample `ad_configuration` JSON
+
+This is the maintained template, `remote_config_ad_configuration.json` at the
+root of the SDK repo — paste it as-is into Firebase Remote Config (key
+`ad_configuration`, type **JSON**), then replace the test IDs in
+`release_ad_configuration` with your live unit IDs. `debug_ad_configuration`
+and `release_ad_configuration` are structurally identical — every placement
+key documented in `AdPlacementKeys`, plus pacing and `native_ad_design`:
+
+<details>
+<summary>Full <code>ad_configuration</code> JSON (both environment blocks)</summary>
+
+```json title="remote_config_ad_configuration.json"
+{
+    "config_version": 1,
+    "debug_ad_configuration": {
+        "app_open": { "enable": true, "adId": "ca-app-pub-3940256099942544/9257395921" },
+        "app_open_resume": { "enable": true, "adId": "ca-app-pub-3940256099942544/9257395921" },
+        "splash_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "internal_app_interstitial": {
+            "enable": true,
+            "adId": "ca-app-pub-3940256099942544/1033173712",
+            "_help_points": "Optional: call-site tokens (from the 'point' argument) that are BLOCKED for this placement while `enable` stays true elsewhere. Tokens are normalized (trim + lowercase). Omit 'points' entirely for the old, ungated behavior.",
+            "points": ["settings"]
+        },
+        "language_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "onboarding_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "premium_close_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "backpress_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "resume_app_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/1033173712" },
+        "splash_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "language_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "onboarding_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "home_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "internal_app_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "exit_app_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "list_items_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "full_screen_native": { "enable": true, "adId": "ca-app-pub-3940256099942544/2247696110" },
+        "splash_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "language_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "onboarding_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "home_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "internal_app_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "collapsible_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "list_items_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "exit_app_banner": { "enable": true, "adId": "ca-app-pub-3940256099942544/6300978111" },
+        "premium_item_rewarded_video": { "enable": true, "adId": "ca-app-pub-3940256099942544/5224354917" },
+        "premium_item_rewarded_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/5354046379" },
+        "on_action_rewarded_video": { "enable": true, "adId": "ca-app-pub-3940256099942544/5224354917" },
+        "on_action_rewarded_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/5354046379" },
+        "ads_enabled": true,
+        "native_ad_refresh_time": 15,
+        "interstitial_count": 1,
+        "interstitial_delay_min_sec": 10,
+        "interstitial_delay_max_sec": 30,
+        "resume_delay_sec": 5,
+        "native_ad_design": {
+            "default": {
+                "light": {
+                    "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF",
+                    "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12,
+                    "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF"
+                },
+                "dark": {
+                    "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF",
+                    "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12,
+                    "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF"
+                }
+            },
+            "overrides": {
+                "splash_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } },
+                "language_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } },
+                "onboarding_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } },
+                "home_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } },
+                "internal_app_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } },
+                "full_screen_native": { "light": { "cta_button_color": "#486AEC", "background_color": "#E9EDFB", "cta_text_color": "#FFFFFF", "heading_color": "#000000", "description_color": "#111111", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" }, "dark": { "cta_button_color": "#486AEC", "background_color": "#1C1C24", "cta_text_color": "#FFFFFF", "heading_color": "#FFFFFF", "description_color": "#E0E0E0", "corner_radius_dp": 12, "ad_label_background_color": "#486AEC", "ad_label_stroke_color": "#FFFFFF", "ad_label_text_color": "#FFFFFF" } }
+            }
+        }
+    },
+    "release_ad_configuration": {
+        "_note": "Identical shape to debug_ad_configuration above — same ~28 placement keys, pacing fields, and native_ad_design block. Replace every ca-app-pub-3940256099942544/... test ID with your live unit IDs before publishing; leave debug_ad_configuration on test IDs."
+    }
+}
+```
+
+</details>
+
+`release_ad_configuration` in the real file is a full duplicate of
+`debug_ad_configuration`'s shape above (all ~28 placements, pacing, and
+`native_ad_design`) with live ad unit IDs instead of test ones — omitted here
+to keep this page scannable. Copy the actual file from the SDK repo root
+(`remote_config_ad_configuration.json`) rather than retyping it by hand, and
+paste the whole thing — both blocks — as the single `ad_configuration` value.
+
 ## Shipping your own default JSON
 
 By default, the pre-fetch/offline configuration is the bundled test-ID JSON.

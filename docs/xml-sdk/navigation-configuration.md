@@ -22,7 +22,7 @@ are Activities or Fragments.
 | Where | What you call |
 |---|---|
 | `Application.onCreate` | 1. `nav.setConfig(defaults)` → 2. `initWithRemoteConfig(...)` → 3. in its callback: `nav.loadFromRemoteConfig()` |
-| Splash screen | Wait for the fetch → read `nav.config.splash.getStartedVariant` to build the UI → `nav.onSplashContinue(host)` |
+| Splash screen | Wait for the fetch → check `nav.isFirstLaunch()` → read `firstLaunchGetStartedVariant` or `secondLaunchGetStartedVariant` accordingly to build the UI → `nav.onSplashContinue(host)` |
 | Language screen | `nav.onLanguageSelected(host, fromSplash)` on Done |
 | Onboarding screen | `nav.onOnboardingComplete(host)` when finished |
 | Premium screen | `nav.onPremiumClose(host, fromSplash)` on close/back |
@@ -44,9 +44,10 @@ class MyApplication : Application() {
         NavigationFlowManager.getInstance(this).setConfig(
             NavigationConfig(
                 splash = SplashConfig(
-                    showConsent = false,      // show UMP consent form on splash
-                    getStartedVariant = 0,    // 0=direct, 1=button+banner, 2=button+native, 3=button only
-                    firstLaunchFlow = 0,      // 0=lang/onboarding, 1=interstitial first, else=main
+                    showConsent = false,               // show UMP consent form on splash
+                    firstLaunchGetStartedVariant = 1,  // 0=direct, 1=button+banner, 2=button+native, 3=button only — for a first-time user
+                    secondLaunchGetStartedVariant = 0, // same 0-3 meaning, for a returning user — set independently
+                    firstLaunchFlow = 0,                // 0=lang/onboarding, 1=interstitial first, else=main
                     secondLaunchFlow = 0
                 ),
                 onboarding = OnboardingConfig(completionFlow = 0),
@@ -73,6 +74,12 @@ class MyApplication : Application() {
 }
 ```
 
+`firstLaunchGetStartedVariant` and `secondLaunchGetStartedVariant` are independent —
+a common setup is `1` (button + banner) for a first-time user, so a new user
+gets a beat with the value proposition before continuing, and `0` (direct, no
+button) for every later launch so a returning user isn't slowed down. Both
+default to `0` if you don't set them.
+
 :::warning[The fetch is asynchronous]
 If your splash reads the config immediately it would still see the defaults —
 the splash must wait for the callback above (a `@Volatile` result + waiter
@@ -81,8 +88,8 @@ list is a common pattern for that readiness gate).
 
 ## 2. Splash screen
 
-Wait for the fetch, build the UI from `getStartedVariant`, and hand the click
-to the SDK:
+Wait for the fetch, pick **which** variant field applies via
+`nav.isFirstLaunch()`, build the UI from it, and hand the click to the SDK:
 
 ```kotlin
 class SplashActivity : AppCompatActivity() {
@@ -106,7 +113,13 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun setupSplash() {
-        when (nav.config.splash.getStartedVariant) {
+        // isFirstLaunch() decides which of the two variant fields applies —
+        // a first-time user and a returning user can show a completely
+        // different splash UI without touching the other's flow.
+        val variant = if (nav.isFirstLaunch()) nav.config.splash.firstLaunchGetStartedVariant
+                      else nav.config.splash.secondLaunchGetStartedVariant
+
+        when (variant) {
             0 -> nav.onSplashContinue(host)   // direct — no button
             1 -> { showGetStartedButton(); loadBanner() }
             2 -> { showGetStartedButton(); loadNative() }
@@ -117,9 +130,11 @@ class SplashActivity : AppCompatActivity() {
 }
 ```
 
-`onSplashContinue` routes to the **first-launch** flow (language → onboarding)
-or the **second-launch** flow (main / premium / ads) based on persisted state
-— the splash never branches on that itself.
+`onSplashContinue` (called either immediately for variant `0` or from the
+button's click listener for variants `1`-`3`) itself re-checks launch state
+and routes to the **first-launch** flow (language → onboarding) or the
+**second-launch** flow (main / premium / ads) — the splash screen only needs
+to decide *what to render*, never *where to go next*.
 
 ## 3. Implement `NavigationHost`
 
@@ -215,7 +230,11 @@ onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
 
 ## Flow reference (from `navigation_configuration`)
 
-### Splash — `get_started_variant`
+### Splash — `first_launch_get_started_variant` / `second_launch_get_started_variant`
+
+Two independent fields, same `0`-`3` meaning — one applies while
+`isFirstLaunch()` is true, the other once the user has completed language +
+onboarding at least once:
 
 | Value | UI |
 |---|---|
@@ -280,18 +299,32 @@ nav.logConfig()
 ```
 
 ```
-║ NAVIGATION CONFIG    source: REMOTE CONFIG    <- or "APP DEFAULT (setConfig)"
-║ get_started_variant = 1   (0=direct..., 1=button+banner, ...)
-║ first_launch_flow   = 0   (0=lang/onboarding, ...)
-...
+╔═══════════════════════════════════════════════════════════════
+║ NAVIGATION CONFIG    source: REMOTE CONFIG
+║ config_version: 1
+╠─ SPLASH ──────────────────────────────────────────────────────
+║ show_consent        = true   (true=show UMP form on splash)
+║ first_launch_get_started_variant  = 1   (0=direct/no-button, 1=button+banner, 2=button+native, 3=button only)
+║ second_launch_get_started_variant = 0   (same meaning, for a returning user)
+║ first_launch_flow   = 0   (0=lang/onboarding, 1=interstitial→lang/onboarding, else=main)
+║ second_launch_flow  = 0   (0=main, 1=inter→main, 2=open→(fail:inter)→main, 3=open→main, 4=premium, 5=inter→premium)
+╠─ ONBOARDING ──────────────────────────────────────────────────
+║ completion_flow     = 0   (0=main, 1=inter→main, 2=premium, 3=inter→premium)
+╠─ PREMIUM ─────────────────────────────────────────────────────
+║ close_flow          = 0   (0=fromSplash?main:finish, 1=inter→(fromSplash?main:finish))
+╠─ LAUNCH STATE (persisted) ────────────────────────────────────
 ║ languageSelected = false | onboardingDone = false
 ║ => isFirstLaunch = true
+╚═══════════════════════════════════════════════════════════════
 ```
 
-`source` tells you whether a value came from Remote Config or the app's
-`setConfig(...)` defaults. Read individual values via
-`nav.config.splash.getStartedVariant`, etc., and `nav.configSource` for the
-source.
+`source` reads `"REMOTE CONFIG"` when a value came from Remote Config,
+`"APP DEFAULT (setConfig)"` when the key was absent and your `setConfig(...)`
+defaults were kept, or `"APP DEFAULT (invalid remote JSON)"` if the remote
+value existed but failed to parse. Read individual values via
+`nav.config.splash.firstLaunchGetStartedVariant` /
+`nav.config.splash.secondLaunchGetStartedVariant`, etc., and `nav.configSource`
+for the source.
 
 ## State the SDK persists
 
@@ -307,9 +340,67 @@ Everything else — which screen is "main"/"premium", how to show ads — stays 
 your app; each project maps its own Activities/Fragments to the flow numbers
 above.
 
+## Sample `navigation_configuration` JSON
+
+This is the maintained template, `navigation_config_template.json` at the root
+of the SDK repo — paste it as-is into Firebase Remote Config (key
+`navigation_configuration`, type **JSON**) and edit the values, or use it as
+the shape for an app-supplied default. Keys starting with `_` are
+documentation only — `NavigationConfigParser` ignores any key it doesn't
+recognize, so they're safe to keep or delete freely:
+
+```json title="navigation_config_template.json"
+{
+  "navigation_configuration": {
+    "_readme": "Flow logic only — NO ad IDs here (ads come from remote_config_json). Fields starting with _ are documentation and are ignored by the parser; keep or delete them freely.",
+    "config_version": 1,
+
+    "splash": {
+      "show_consent": true,
+      "_show_consent_help": "true = show Google UMP consent form on splash before continuing; false = skip it.",
+
+      "first_launch_get_started_variant": 1,
+      "second_launch_get_started_variant": 0,
+      "_get_started_variant_help": "0 = direct flow, no button (navigate immediately) | 1 = 'Get Started' button + Banner ad | 2 = button + Native ad | 3 = button only. Set independently for a first-time vs a returning user.",
+
+      "first_launch_flow": 0,
+      "_first_launch_flow_help": "New user (language not selected OR onboarding not done). 0 = go to Language if not selected else Onboarding | 1 = show Interstitial, then Language/Onboarding | any other value = go straight to Main.",
+
+      "second_launch_flow": 0,
+      "_second_launch_flow_help": "Returning user (language selected AND onboarding done). 0 = Main | 1 = Interstitial then Main | 2 = App-Open ad; on success Main, on failure Interstitial then Main | 3 = App-Open ad then Main (either way) | 4 = Premium | 5 = Interstitial then Premium | any other value = Main."
+    },
+
+    "onboarding": {
+      "completion_flow": 0,
+      "_completion_flow_help": "Runs when Onboarding finishes. 0 = Main | 1 = Interstitial then Main | 2 = Premium | 3 = Interstitial then Premium | any other value = Main."
+    },
+
+    "premium": {
+      "close_flow": 0,
+      "_close_flow_help": "Runs when Premium is closed/back-pressed. 0 = if reached from splash journey go to Main else finish() | 1 = show Interstitial, then (from splash → Main, else → finish()) | any other value = Main."
+    }
+  }
+}
+```
+
+Field-by-field, matching `NavigationConfigParser`'s defensive parsing (a
+missing or malformed field silently falls back to its default rather than
+crashing):
+
+| Path | Type | Default | Meaning |
+|---|---|---|---|
+| `config_version` | int | `1` | Bump this when you change the JSON, so `logConfig()`'s output confirms a fetch actually picked up your edit |
+| `splash.show_consent` | bool | `true` | Show the UMP consent form on splash before continuing |
+| `splash.first_launch_get_started_variant` | int 0-3 | `0` | Splash UI for a first-time user — see the variant table below |
+| `splash.second_launch_get_started_variant` | int 0-3 | `0` | Splash UI for a returning user — same meaning, set independently |
+| `splash.first_launch_flow` | int | `0` | Where a first-time user goes after splash — see the flow table below |
+| `splash.second_launch_flow` | int | `0` | Where a returning user goes after splash |
+| `onboarding.completion_flow` | int | `0` | Where the user goes when onboarding finishes |
+| `premium.close_flow` | int | `0` | Where the user goes when the premium screen is closed/back-pressed |
+
 ## Change a flow with no release
 
 Edit the `navigation_configuration` values in Firebase Remote Config and
-publish — see `navigation_config_template.json` at the root of the SDK repo,
-which includes `_help` fields explaining every value (the parser ignores keys
-starting with `_`, so they're safe to keep in the console).
+publish — the SDK reuses the same fetch as the ad configuration, so there's
+nothing extra to wire up. See [Sample JSON](#sample-navigation_configuration-json)
+above for the full template.
