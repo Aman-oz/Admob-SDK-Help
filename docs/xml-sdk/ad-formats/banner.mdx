@@ -8,7 +8,7 @@ import AdFormatHero from '@site/src/components/AdFormatHero';
 <AdFormatHero
   format="banner"
   title="Banner Ads"
-  description="A persistent, small ad anchored to part of the screen. Three variants share one loader — pick per screen, not per app." />
+  description="A persistent, small ad anchored to part of the screen. Three formats share one loader (adaptive, medium rectangle, collapsible), and the adaptive/collapsible ones take one of three size types — pick per screen, not per app." />
 
 ```kotlin
 val bannerAdLoader = AdMobManager.getInstance(application).bannerAdLoader
@@ -85,15 +85,84 @@ collapsed (`GONE`, shimmer hidden) — you don't need to hide the layout
 yourself. Full semantics in
 [Remote Config](/xml-sdk/remote-config#disabled-placement-callback-semantics).
 
+## Banner size types
+
+New in `2.0.5`: the **adaptive** and **collapsible** banners take an
+`adSizeType` parameter that picks which adaptive size is requested. It's a
+per-call choice, so one app can use a tall anchored banner on its home screen
+and an inline one inside a scrolling list.
+
+```kotlin
+import com.ozi.ads.domain.ads.type.BannerAdSizeType
+```
+
+| `BannerAdSizeType` | Size | Use when |
+|---|---|---|
+| `LARGE_ANCHORED` **(default)** | Large anchored adaptive — full screen width, taller (e.g. a 320×100 test ad) | Fixed top/bottom slots where you want the best-paying, most visible banner |
+| `ANCHORED_ADAPTIVE` | Standard anchored adaptive — full screen width, shorter | Fixed slots where vertical space is tight |
+| `INLINE_ADAPTIVE` | Inline adaptive — full screen width, height **varies by creative** up to `inlineMaxHeightDp` | Banners inside scrolling content (lists, articles) rather than pinned to an edge |
+
+```kotlin
+// Large anchored — the default, so passing nothing is identical
+adMobManager.bannerAdLoader.showAdaptiveBannerForPlacement(
+    this, null, binding.flBannerAd, AdPlacementKeys.HOME_BANNER,
+    point = "home_bottom",
+    adSizeType = BannerAdSizeType.LARGE_ANCHORED
+) { loaded -> }
+
+// Standard anchored — shorter
+adMobManager.bannerAdLoader.showAdaptiveBannerForPlacement(
+    this, null, binding.flBannerAd, AdPlacementKeys.HOME_BANNER,
+    point = "home_bottom_compact",
+    adSizeType = BannerAdSizeType.ANCHORED_ADAPTIVE
+) { loaded -> }
+
+// Inline — capped at 80dp tall; the real height is only known after load
+adMobManager.bannerAdLoader.showAdaptiveBannerForPlacement(
+    this, null, binding.flBannerAd, AdPlacementKeys.LIST_ITEMS_BANNER,
+    point = "article_list",
+    adSizeType = BannerAdSizeType.INLINE_ADAPTIVE,
+    inlineMaxHeightDp = 80,
+    timeoutMillis = 5000
+) { loaded -> }
+```
+
+- **`inlineMaxHeightDp`** (default `60`) is only read by `INLINE_ADAPTIVE`; the other two types ignore it.
+- **Inline banners resize after they load.** The SDK re-measures the ad view with `WRAP_CONTENT` once the creative arrives, so give the `FrameLayout` a `wrap_content` height rather than a fixed one — a fixed height will clip or leave a gap.
+- **Collapsible banners can't be inline.** Collapsing needs an anchored size, so passing `INLINE_ADAPTIVE` to a collapsible method falls back to `LARGE_ANCHORED` and logs a warning (`inlineMaxHeightDp` is accepted but unused there).
+- **The medium rectangle is unaffected** — it's always 300×250 and has no `adSizeType`.
+- **Cached banners are matched by size type too.** A banner already cached for an ad unit is reused only if it was loaded with the *same* `adSizeType` and dimensions; asking for a different size type on the same ad unit loads a fresh ad rather than showing the wrong shape.
+
 ## Full API
 
 ```kotlin
-fun showAdaptiveBannerForPlacement(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, placementKey: String, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showAdaptiveBannerForPlacement(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, placementKey: String, timeoutMillis: Long = 0L, point: String? = null, adSizeType: BannerAdSizeType = BannerAdSizeType.LARGE_ANCHORED, inlineMaxHeightDp: Int = 60, onAdLoaded: OnSuccessListener<Boolean>? = null)
 fun showMemRecBannerForPlacement(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, placementKey: String, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
-fun showCollapsableBannerForPlacement(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, placementKey: String, isTop: Boolean, timeoutMillis: Long = 0L, point: String? = null, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showCollapsableBannerForPlacement(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, placementKey: String, isTop: Boolean, timeoutMillis: Long = 0L, point: String? = null, adSizeType: BannerAdSizeType = BannerAdSizeType.LARGE_ANCHORED, inlineMaxHeightDp: Int = 60, onAdLoaded: OnSuccessListener<Boolean>? = null)
 fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean
 fun destroyForPlacement(placementKey: String)
 ```
+
+`adSizeType` and `inlineMaxHeightDp` sit **before** `onAdLoaded`, so
+**Kotlin** trailing-lambda calls like `{ loaded -> }` keep working unchanged;
+a Kotlin call that passed `onAdLoaded` positionally must switch to the
+trailing-lambda or a named-argument form.
+
+:::warning[Java callers that pass a listener must be updated]
+The loader uses `@JvmOverloads`, which only drops parameters from the *end*.
+A Java call that passes `onAdLoaded` therefore now has to pass `adSizeType`
+and `inlineMaxHeightDp` before it:
+
+```java
+bannerAdLoader.showAdaptiveBannerForPlacement(
+    activity, null, frameLayout, AdPlacementKeys.HOME_BANNER,
+    5000L, "home_bottom",
+    BannerAdSizeType.LARGE_ANCHORED, 60,   // new in 2.0.5 — pass the defaults
+    loaded -> { }
+);
+```
+Calls that don't pass a listener compile as before.
+:::
 
 ## Manual / advanced: raw ad unit ID
 
@@ -109,9 +178,9 @@ bannerAdLoader.showAdaptiveBanner(activity, null, frameLayout, resolvedId)
 ```
 
 ```kotlin
-fun showAdaptiveBanner(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, adUnitId: String, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showAdaptiveBanner(activity: Activity, shimmerFrameLayout: ShimmerFrameLayout? = null, frameLayout: FrameLayout, adUnitId: String, timeoutMillis: Long = 0L, adSizeType: BannerAdSizeType = BannerAdSizeType.LARGE_ANCHORED, inlineMaxHeightDp: Int = 60, onAdLoaded: OnSuccessListener<Boolean>? = null)
 fun showMemRecBanner(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, adUnitId: String, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
-fun showCollapsableBanner(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, adUnitId: String, isTop: Boolean, timeoutMillis: Long = 0L, onAdLoaded: OnSuccessListener<Boolean>? = null)
+fun showCollapsableBanner(activity: Activity, frameLayout: FrameLayout, shimmerFrameLayout: ShimmerFrameLayout? = null, adUnitId: String, isTop: Boolean, timeoutMillis: Long = 0L, adSizeType: BannerAdSizeType = BannerAdSizeType.LARGE_ANCHORED, inlineMaxHeightDp: Int = 60, onAdLoaded: OnSuccessListener<Boolean>? = null)
 fun isAdLoaded(adUnitId: String): Boolean
 fun destroy()
 fun destroy(adUnitId: String)
@@ -119,7 +188,8 @@ fun destroy(adUnitId: String)
 
 ## Gotchas
 
-- **Adaptive and collapsible size themselves via `Utilities.getAdSize(activity)`** — make sure `frameLayout`'s width reflects the actual screen width at call time (e.g. not measured before rotation settles).
+- **Adaptive and collapsible size themselves via `Utilities.getAdSize(activity, adSizeType, inlineMaxHeightDp)`** — the width comes from the screen width at call time, so make sure `frameLayout` actually spans it (e.g. not measured before rotation settles).
+- **Pick one `adSizeType` per slot and stick with it.** Switching a slot between types on the same ad unit defeats the cache (a banner is only reused when its size type matches), so each switch is a fresh request.
 - **Collapsible passes `isTop` as a request, not a guarantee** — AdMob may still choose not to collapse depending on inventory; don't build layout logic that assumes it always collapses.
 - Always call `destroyForPlacement(placementKey)` (or `destroy()` for the raw-ID API) when the hosting screen is destroyed, to release the underlying ad view.
 - Give each banner slot its own `point`, even when two slots share a placement key — see [Remote Config → Per-point control](/xml-sdk/remote-config#per-point-control).

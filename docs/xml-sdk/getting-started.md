@@ -42,7 +42,7 @@ Then in the app module:
 
 ```kotlin title="app/build.gradle.kts"
 dependencies {
-    implementation("com.ozi.admob:ads:2.0.4") // check the latest published version with your lead
+    implementation("com.ozi.admob:ads:2.0.5") // check the latest published version with your lead
 }
 ```
 
@@ -70,8 +70,8 @@ configurations.configureEach {
 
 ### Which Next-Gen SDK version this pulls in
 
-`com.ozi.admob:ads:2.0.4` depends on Google's
-`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.3.1` — that's
+`com.ozi.admob:ads:2.0.5` depends on Google's
+`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.5.0` — that's
 the actual ad-serving SDK underneath this facade. You don't declare it
 yourself (it comes in transitively via `api(...)` in the library), but you
 need this number when picking mediation adapters — see below.
@@ -87,10 +87,10 @@ mediation network that "initializes" but never actually serves an ad.
 Every mediation adapter's own changelog states a minimum requirement like
 *"requires Google Mobile Ads SDK 22.x or higher"* — that version number is
 from the **legacy** `play-services-ads` numbering scheme, not the Next-Gen
-`ads-mobile-sdk` version (`1.3.1`) this SDK actually uses. Google doesn't
+`ads-mobile-sdk` version (`1.5.0`) this SDK actually uses. Google doesn't
 publish a separate Next-Gen-specific compatibility table — Next-Gen SDK
 ships the classes adapters expect as a forward-compatible stand-in for the
-legacy SDK, and there's no simple "1.3.1 = legacy X.Y.Z" conversion to look
+legacy SDK, and there's no simple "1.5.0 = legacy X.Y.Z" conversion to look
 up. Don't try to match version *numbers* across the two schemes — they're
 unrelated.
 :::

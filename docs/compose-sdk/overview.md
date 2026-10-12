@@ -9,7 +9,7 @@ title: Overview
 Compose counterpart to the [XML/View-based SDK](/xml-sdk/overview) — same
 underlying idea (a facade over the GMA Next-Gen SDK
 (`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk`, currently
-**`1.3.1`** — the same version the XML SDK currently uses), driven by one
+**`1.3.1`**), driven by one
 Firebase Remote Config JSON parameter), rebuilt so Compose apps don't have to
 reach through `AndroidView`/`ViewBinding` to use it. If your app is
 Compose-first, this is the track to follow; if it's Activity/Fragment + XML

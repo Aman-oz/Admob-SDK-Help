@@ -99,6 +99,47 @@ convention of "navigation proceeds" — see
 `isEnabled` guard above is a belt-and-suspenders UX choice (skip the loading
 dialog outright) more than a strict requirement.
 
+## How loading and caching work
+
+`2.0.5` fixes rewarded ad caching. The loader now tracks state **per ad unit**,
+and every entry point checks it in the same order — so a rewarded ad is never
+requested twice for the same unit:
+
+1. **Loaded** — an ad is already warm (from `loadAd`, or one parked by an earlier call) → use it, **no new request**.
+2. **Loading** — a request for that unit is already in flight → don't start a second one; join it.
+3. **Otherwise** → load.
+
+What that means in practice:
+
+| You call | Ad already loaded | Load already in flight | Nothing loaded |
+|---|---|---|---|
+| `loadAdForPlacement` | Reports `true` immediately, no request | Callback fires when the in-flight preload settles (or `false` immediately if the in-flight load belongs to a `loadAndShow` call) | Starts a preload |
+| `loadAndShowAdForPlacement` | Shows the warm ad straight away | **Waits** for that load and shows it — up to `timeoutMillis`, or 20s if you passed none | One-shot load, then show |
+| `showAd` | Shows it | `false` — `showAd` never loads or waits | `false` |
+
+So the preload-on-entry pattern above now does exactly what it looks like:
+`loadAdForPlacement` warms one ad, and the later `loadAndShowAdForPlacement`
+on the button tap shows **that** ad instead of fetching another.
+
+A few details worth knowing:
+
+- **One `loadAd` warms exactly one ad.** The SDK's preloader normally keeps refilling its buffer; this loader tears the session down as soon as the ad is taken to show, so nothing reloads behind your back. Call `loadAd` again when you want the next one.
+- **A late ad isn't wasted.** If `loadAndShowAdForPlacement` times out (or the activity is finishing) before the ad lands, the load carries on and the ad is **kept for the next call**. Parked ads expire after 55 minutes — a little under Google's one-hour rewarded expiry — and are dropped rather than shown stale.
+- **Only one rewarded ad shows at a time.** A second call while one is on screen reports `false`.
+- **`showAd` and the no-arg `isAdLoaded()` follow the most recent `loadAd`/`loadAndShowAd` call's ad unit.** The state per ad unit is independent, so loading a second unit doesn't discard the first one's warm ad.
+
+You can inspect the state per placement before deciding what to do:
+
+```kotlin
+val rewarded = adMobManager.rewardedAdLoader
+
+if (rewarded.isAdLoadedForPlacement(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)) {
+    // a tap will show instantly
+} else if (rewarded.isAdLoadingForPlacement(AdPlacementKeys.ON_ACTION_REWARDED_VIDEO)) {
+    // a tap will wait for the in-flight load rather than start another
+}
+```
+
 ## Which placement keys
 
 Two placement pairs exist for rewarded formats:
@@ -113,7 +154,11 @@ Remote Config.
 ```kotlin
 fun loadAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = false, dialogModel: LoadingDialogModel? = LoadingDialogModel(), point: String? = null, onLoaded: OnSuccessListener<Boolean>? = null)
 fun loadAndShowAdForPlacement(activity: Activity, placementKey: String, showDialog: Boolean = true, dialogModel: LoadingDialogModel? = LoadingDialogModel(), timeoutMillis: Long = 0L, point: String? = null, onRewardEarned: OnSuccessListener<Boolean>? = null)
-fun isAdLoaded(): Boolean
+fun isAdLoadedForPlacement(placementKey: String, point: String? = null): Boolean   // ad ready now; false when disabled/blocked
+fun isAdLoadingForPlacement(placementKey: String, point: String? = null): Boolean  // load in flight; false when disabled/blocked
+fun isAdLoaded(): Boolean                  // ready for the most recently loaded ad unit
+fun isAdLoaded(adUnitId: String): Boolean  // ready for a specific ad unit
+fun isAdLoading(adUnitId: String): Boolean // load in flight for a specific ad unit
 ```
 
 ## Manual / advanced: raw ad unit ID
@@ -132,9 +177,11 @@ rewardedAdLoader.loadAd(this, resolvedId, true) { loaded ->
 }
 ```
 
-`showAd(activity, onRewardEarned)` shows whatever is currently loaded for this
-loader — there's no per-ad-unit selection at show time, so don't load a
-second placement/ad unit before showing the first.
+`showAd(activity, onRewardEarned)` shows the warm ad for the **most recently
+loaded** ad unit — there's no ad-unit argument at show time. Loading a second
+unit moves that pointer, so call `showAd` before loading another, or use
+`loadAndShowAd` (which takes the unit explicitly) for the earlier one — its
+warm ad stays cached either way.
 
 ## Use cases
 
@@ -145,6 +192,7 @@ second placement/ad unit before showing the first.
 
 ## Gotchas
 
-- `showAd`/`loadAndShowAdForPlacement` have no per-call ad-unit selection at show time — one loader, one current ad.
+- `showAd` has no ad-unit argument — it shows the warm ad for the most recent `loadAd`/`loadAndShowAd` call's unit. `loadAndShowAdForPlacement` names its placement explicitly, so it's unaffected.
+- Don't call `loadAdForPlacement` on every screen resume "just in case" — it's now a no-op when an ad is already loaded or loading, but each call after a *show* starts a fresh request, so tie it to the moments you actually expect a rewarded tap.
 - Always branch on the `earned`/reward callback, not just "did the ad show" — a user can close a rewarded ad early without earning anything.
 - Checking `adMobManager.isEnabled(key)` before calling avoids a loading dialog flash for a placement you already know is off.

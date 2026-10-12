@@ -31,6 +31,12 @@ title: Troubleshooting
 - `FrameLayout` container is collapsed/`GONE` — check whether the placement is disabled in Remote Config (banners collapse their container automatically when disabled)
 - Shimmer layout isn't set up, so there's no visible loading state before the ad arrives
 - Network unavailable
+- Inline adaptive banner (`adSizeType = INLINE_ADAPTIVE`) clipped or leaving a gap — the container has a fixed height; use `wrap_content`, since the real height is only known after load. See [Banner size types](/xml-sdk/ad-formats/banner#banner-size-types)
+- A collapsible banner shows at the large-anchored size when you asked for inline — expected: collapsible banners fall back to `LARGE_ANCHORED` for `INLINE_ADAPTIVE` (check Logcat for the warning)
+
+#### Rewarded ad loads twice, or the button tap waits
+- Since `2.0.5` a rewarded ad is never requested twice for one ad unit — if you still see two requests, check they aren't for **different placements** resolving to different ad unit IDs
+- A tap that "waits" is `loadAndShowAdForPlacement` joining a load already in flight (capped by `timeoutMillis`, or 20s with none) — use `isAdLoadingForPlacement` to confirm. See [Rewarded Ads → How loading and caching work](/xml-sdk/ad-formats/rewarded#how-loading-and-caching-work)
 
 #### Remote Config values look stale
 - Release builds cache Remote Config for 12h — uninstall/reinstall or wait out the cache during testing; debug builds fetch instantly (0s interval)

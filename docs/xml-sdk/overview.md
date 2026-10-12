@@ -10,10 +10,10 @@ remote-driven configuration, and the splash → onboarding → main navigation f
 It exists so that pattern lives in **one place** instead of being re-implemented
 (and drifting) app by app.
 
-This site documents the **Next-Gen line** — the current `2.0.4`+ releases,
+This site documents the **Next-Gen line** — the current `2.0.5`+ releases,
 built on Google's [GMA Next-Gen SDK](https://developers.google.com/ad-manager/mobile-ads-sdk/android/next-gen)
 (`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk`, currently
-**`1.3.1`**) rather than the legacy `com.google.android.gms:play-services-ads`.
+**`1.5.0`**) rather than the legacy `com.google.android.gms:play-services-ads`.
 The two ad SDKs cannot coexist in one APK, so this line excludes the legacy
 dependency at the Gradle level. Adding mediation? See
 [Getting Started → Picking mediation adapter versions](/xml-sdk/getting-started#picking-mediation-adapter-versions)
@@ -89,6 +89,24 @@ first:
    race each other.
 4. **`setSplash(true)` must be turned back off** in the splash screen's
    `onDestroy`, or automatic resume ads never fire again.
+
+## What's new in 2.0.5
+
+| Change | Details |
+|---|---|
+| **Three banner size types** | Adaptive and collapsible banners take a new `adSizeType` (`LARGE_ANCHORED` default, `ANCHORED_ADAPTIVE`, `INLINE_ADAPTIVE`) — see [Banner Ads](/xml-sdk/ad-formats/banner#banner-size-types) |
+| **Rewarded ad caching fixed** | One request per ad unit, ever — loaded/loading state is tracked per ad unit, so `loadAd` then `loadAndShowAd` shows the warm ad instead of loading a second one — see [Rewarded Ads](/xml-sdk/ad-formats/rewarded#how-loading-and-caching-work) |
+| **Next-Gen SDK `1.3.1` → `1.5.0`** | The underlying `ads-mobile-sdk` moved up two minor versions; the exclude of the legacy `play-services-ads` is unchanged |
+
+Upgrading from `2.0.4` is a version-number bump for Kotlin code — the default
+banner size is the same one `2.0.4` already used, so existing banner calls
+render exactly as before. The one exception is **Java** code that passes an
+`onAdLoaded` listener to a banner method: it must now also pass the two new
+parameters first (see
+[Banner Ads → Full API](/xml-sdk/ad-formats/banner#full-api)). Because the Next-Gen SDK itself moved, re-run the runtime
+mediation check from
+[Getting Started → Picking mediation adapter versions](/xml-sdk/getting-started#picking-mediation-adapter-versions)
+once after upgrading, to confirm every adapter still initializes.
 
 ## Next steps
 

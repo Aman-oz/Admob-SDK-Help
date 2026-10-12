@@ -56,9 +56,10 @@ configurations.configureEach {
 ### Which Next-Gen SDK version this pulls in
 
 `com.ozi.admob.nextgen.compose:ads:1.0.2` depends on
-`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.3.1` — the same
-Next-Gen SDK version the XML SDK currently uses. You don't declare it
-yourself, but you need this number when picking mediation adapters.
+`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.3.1`. The XML
+and Compose SDKs are versioned independently, so this can differ from the
+Next-Gen version the XML SDK uses. You don't declare it yourself, but you
+need this number when picking mediation adapters.
 
 ### Picking mediation adapter versions
 
