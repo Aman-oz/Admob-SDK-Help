@@ -1,7 +1,3 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "proxy": {
-    "entrypoint": "proxy.js",
-    "matcher": ["/((?!api|assets|img|login|favicon\\.ico|favicon\\.svg|sitemap\\.xml).*)"]
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }

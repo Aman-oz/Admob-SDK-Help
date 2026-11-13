@@ -90,11 +90,9 @@ const config = {
             position: 'right',
             label: 'Release notes',
           },
-          {
-            to: '/team',
-            position: 'right',
-            label: 'Team Access',
-          },
+          // Sign-in is switched off for now. To bring it back: restore the "proxy" block in
+          // vercel.json (see git history) and re-add the Team Access link:
+          // {to: '/team', position: 'right', label: 'Team Access'},
         ],
       },
       footer: {
