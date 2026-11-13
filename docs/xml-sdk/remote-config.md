@@ -5,15 +5,21 @@ title: Remote Config
 
 # Remote Config
 
-The SDK is driven by **one Firebase Remote Config JSON parameter**:
-`ad_configuration`. It carries separate `debug_ad_configuration` and
+Ads, pacing and in-app updates are driven by **one Firebase Remote Config JSON
+parameter**: `ad_configuration`. It carries separate `debug_ad_configuration` and
 `release_ad_configuration` blocks — the block used is picked by the `isDebug`
 flag you pass at init (your app's `BuildConfig.DEBUG`), so **apps never swap
 IDs manually**. Each block holds:
 
 - **~28 placement objects** — `{ "enable": boolean, "adId": string, "points": [string] }` (keys defined in `AdPlacementKeys`; `points` is optional — see [Per-point control](#per-point-control))
-- **Pacing** — `ads_enabled`, `native_ad_refresh_time`, `interstitial_count`, `interstitial_delay_min_sec`, `interstitial_delay_max_sec`, `resume_delay_sec`
+- **Pacing** — `ads_enabled`, `native_ad_refresh_time`, `banner_ad_refresh_time`, `interstitial_count`, `interstitial_delay_min_sec`, `interstitial_delay_max_sec`, `resume_delay_sec`
+- **In-app update** — `app_update_type` (`0` flexible, `1` immediate, anything else none) — see [In-App Updates](/xml-sdk/app-update)
 - **`native_ad_design`** — light/dark color palettes, with per-placement overrides
+
+Screen-to-screen navigation is a **second, separate parameter**,
+`app_navigation_configuration` — see
+[Navigation Configuration](/xml-sdk/navigation-configuration). It rides the same
+Firebase fetch.
 
 The maintained JSON template lives at the SDK repo root,
 `remote_config_ad_configuration.json`. The same schema (with Google test IDs)
@@ -73,10 +79,13 @@ key documented in `AdPlacementKeys`, plus pacing and `native_ad_design`:
         "on_action_rewarded_interstitial": { "enable": true, "adId": "ca-app-pub-3940256099942544/5354046379" },
         "ads_enabled": true,
         "native_ad_refresh_time": 15,
+        "banner_ad_refresh_time": 15,
         "interstitial_count": 1,
         "interstitial_delay_min_sec": 10,
         "interstitial_delay_max_sec": 30,
         "resume_delay_sec": 5,
+        "_help_app_update_type": "In-app update (Google Play): 0 = FLEXIBLE (background download, user keeps using the app) | 1 = IMMEDIATE (full-screen blocking update) | any other value, or omit the key = NO update. Independent of ads_enabled.",
+        "app_update_type": -1,
         "native_ad_design": {
             "default": {
                 "light": {
@@ -125,21 +134,34 @@ launch — before Firebase responds — supply your own:
 AdMobManager.getInstance(this).initWithRemoteConfig(
     appId = "ca-app-pub-XXXXXXXX~YYYYYYYY",
     isDebug = BuildConfig.DEBUG,
+    // configKey = "remote_config_json",   // only if your console parameter isn't named ad_configuration
     defaults = RemoteConfigDefaults.Companion.Builder()
-        .setAdConfigurationAsset(this, "default_ad_configuration.json") // app/src/main/assets/
+        .setAdConfigurationAsset(this, "default_ad_configuration.json")            // app/src/main/assets/
         // or inline: .setAdConfigurationJson(defaultAdConfigJson)
+        .setNavigationConfigurationAsset(this, "default_navigation_configuration.json")
+        // or inline: .setNavigationConfigurationJson(defaultNavigationJson)
         .build()
 ) { success -> }
 ```
 
-If the app-supplied JSON fails to parse, the SDK logs a warning and falls back
-to the bundled asset — it never crashes on a bad default.
+`setNavigationConfigurationAsset` is the default for the **second** parameter,
+`app_navigation_configuration` (see
+[Navigation Configuration](/xml-sdk/navigation-configuration)): the value used until
+that parameter is fetched, and offline.
 
-**Fetch timeout** (default 6s, `fetchTimeoutMillis`): if the fetch hasn't
-completed in time, the callback fires with `false` so the app proceeds on
-defaults — but the request keeps running in the background. When it does
-arrive, it's activated and applied automatically, so later reads (`adIdFor`,
-`isEnabled`, …) return the fresh values. The callback fires exactly once.
+If an app-supplied JSON fails to parse, the SDK logs a warning and falls back — to
+the bundled asset for the ad config, to the in-code navigation defaults for
+navigation. It never crashes on a bad default.
+
+**Fetch timeout** (default **8 s**, `fetchTimeoutMillis`; `0` waits forever): if the
+fetch hasn't completed in time, the callback fires with `false` so the app proceeds
+on defaults — but the request keeps running in the background. When it does arrive,
+it's activated and applied automatically, so later reads (`adIdFor`, `isEnabled`, …)
+return the fresh values. The callback fires exactly once.
+
+The [Startup Flow](/xml-sdk/startup-flow) has its own, shorter wait on top of this
+(`remoteConfigTimeoutMs`, 6 s, counted from when the splash calls `start`) so the splash
+never sits waiting for a slow fetch.
 
 ## Loading ads by placement key (recommended)
 
@@ -250,10 +272,13 @@ Applied automatically on every (re-)apply:
 | JSON key | Effect |
 |---|---|
 | `ads_enabled` | `false` → all ads suppressed (the premium path); callbacks still fire `true` so UI proceeds |
+| `native_ad_refresh_time` | seconds after a native ad was first shown, once the next show call also loads a fresh one in the background (the cached ad is still displayed instantly). `0` never refreshes. Default `15` |
+| `banner_ad_refresh_time` | seconds a loaded banner is **reused** from the cache before the next call requests a fresh one. `0` or less means 15. Default `15` — see [Banner Ads](/xml-sdk/ad-formats/banner#banner-caching) |
 | `interstitial_count` | show an interstitial every N actions (`showAdWithTimeAndCounter`) |
 | `interstitial_delay_min_sec` | minimum seconds between interstitials |
 | `interstitial_delay_max_sec` | force-show after this many seconds |
 | `resume_delay_sec` | background seconds before a resume app-open ad |
+| `app_update_type` | `0` flexible, `1` immediate, anything else = no in-app update. Independent of `ads_enabled` — see [In-App Updates](/xml-sdk/app-update) |
 
 `app_open_resume.enable` gates the resume ad through the placement check on
 every load/show — it does **not** touch `setShouldShowResumeAd`, which is a
@@ -336,8 +361,17 @@ rc.testRemoteConfigKeys(listOf("user_custom_value"))      // Map<key, Pair<value
 3. In `release_ad_configuration`, replace every test ID
    (`ca-app-pub-3940256099942544/...`) with your **live** unit IDs; leave
    `debug_ad_configuration` on test IDs
-4. Publish — debug builds fetch instantly (0s interval), release builds cache
+4. If the app offers in-app updates, set `app_update_type` in the block you want
+   (`release_ad_configuration` for a release build)
+5. **Add a second parameter** → key `app_navigation_configuration`, type **JSON**, and
+   paste `navigation_config_template.json` (see
+   [Navigation Configuration](/xml-sdk/navigation-configuration)). Apps that ship the
+   default JSON asset work without it, but nothing can then be changed remotely
+6. Publish — debug builds fetch instantly (0s interval), release builds cache
    for 12h
+
+If your console parameter for the ad JSON isn't named `ad_configuration`, pass its name
+as `configKey` to `initWithRemoteConfig` (the sample app uses `remote_config_json`).
 
 ## Testing checklist
 
@@ -348,5 +382,7 @@ rc.testRemoteConfigKeys(listOf("user_custom_value"))      // Map<key, Pair<value
 - [ ] Dark theme → native ads use the `dark` palette
 - [ ] Malformed JSON in console → parser falls back to the bundled default, app keeps running
 - [ ] Release build reads `release_ad_configuration` only
+- [ ] `app_update_type: -1` → no update dialog anywhere; `0` / `1` → the matching update flow on a Play-installed build
+- [ ] Reorder `flows.first_launch` in `app_navigation_configuration` → the journey follows the new order after the next fetch (`nav.logConfig()` shows `source: REMOTE CONFIG`)
 
 If something isn't behaving, see [Troubleshooting](/xml-sdk/troubleshooting#remote-config-values-look-stale).

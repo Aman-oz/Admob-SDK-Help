@@ -42,7 +42,7 @@ Then in the app module:
 
 ```kotlin title="app/build.gradle.kts"
 dependencies {
-    implementation("com.ozi.admob:ads:2.0.5") // check the latest published version with your lead
+    implementation("com.ozi.admob:ads:2.1.2") // check the latest published version with your lead
 }
 ```
 
@@ -70,7 +70,7 @@ configurations.configureEach {
 
 ### Which Next-Gen SDK version this pulls in
 
-`com.ozi.admob:ads:2.0.5` depends on Google's
+`com.ozi.admob:ads:2.1.2` depends on Google's
 `com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.5.0` — that's
 the actual ad-serving SDK underneath this facade. You don't declare it
 yourself (it comes in transitively via `api(...)` in the library), but you
@@ -184,11 +184,14 @@ dependencyResolutionManagement {
 The manifest entry is still required even though the Next-Gen SDK takes the app
 ID in code (next step) — the UMP consent SDK reads it from here.
 
-## 3. Initialize — Remote Config driven (recommended)
+## 3. Initialize
 
-One call in your `Application` class. No hardcoded ad unit IDs: the SDK applies
-its bundled defaults immediately, then fetches/activates the real
-`ad_configuration` Firebase Remote Config parameter and re-applies.
+### Recommended: Remote Config and the startup flow
+
+Two small pieces: start Remote Config in your `Application`, and run the
+[Startup Flow](/xml-sdk/startup-flow) from the splash screen. The flow waits for
+Remote Config, offers an in-app update if there is one, shows the consent form if
+needed, and then calls you back — and *you* initialize ads in that callback.
 
 ```kotlin title="MyApplication.kt"
 class MyApplication : Application() {
@@ -196,14 +199,29 @@ class MyApplication : Application() {
         super.onCreate()
         AdMobManager.getInstance(this)
             .setPremium(false)
+            .setDeferAdsInit(true)          // ads are initialized after consent, in the splash callback
             .initWithRemoteConfig(
                 appId = "ca-app-pub-XXXXXXXX~YYYYYYYY", // same value as the manifest entry
-                isDebug = BuildConfig.DEBUG
-            ) { success ->
-                // SDK is configured; bundled defaults are already active
-                // even if this fetch failed or timed out.
-            }
+                isDebug = BuildConfig.DEBUG,
+                defaults = RemoteConfigDefaults.Companion.Builder()
+                    .setAdConfigurationAsset(this, "default_ad_configuration.json")
+                    .setNavigationConfigurationAsset(this, "default_navigation_configuration.json")
+                    .build()
+            )
     }
+}
+```
+
+```kotlin title="SplashActivity.kt"
+val ads = AdMobManager.getInstance(application)
+
+ads.startup.start(this) { result ->
+    if (isFinishing || isDestroyed) return@start
+    // Granted, declined, timed out or failed — the ads flow carries on either way.
+    ads.initializeAds(
+        onInitializationComplete = { /* load the app-open ad, then continue the splash */ },
+        onInitializationFailed = { /* continue without ads */ }
+    )
 }
 ```
 
@@ -212,8 +230,38 @@ programmatically rather than reading it from the manifest, so the no-`appId`
 overloads of `initialize`/`initWithRemoteConfig` exist only to throw
 `IllegalStateException` pointing back here.
 
+:::warning[setDeferAdsInit(true) needs initializeAds()]
+`setDeferAdsInit(true)` stops `initWithRemoteConfig` from initializing the ads SDK. If
+nothing calls `initializeAds()` afterwards — normally the startup callback — ads are
+never initialized. Why it exists, and when to leave it `false`, is on the
+[Startup Flow](/xml-sdk/startup-flow#what-setdeferadsinit-does) page.
+:::
+
 See [Remote Config](/xml-sdk/remote-config) for the full JSON schema, shipping your
 own default JSON, and per-placement/point control.
+
+### Simple path: Remote Config without the startup flow
+
+Skip `setDeferAdsInit` and the splash call. `initWithRemoteConfig` initializes ads
+immediately, applies the bundled defaults at once, then fetches the real
+`ad_configuration` parameter and re-applies. Load the navigation config yourself once
+the fetch completes:
+
+```kotlin title="MyApplication.kt"
+AdMobManager.getInstance(this)
+    .setPremium(false)
+    .initWithRemoteConfig(
+        appId = "ca-app-pub-XXXXXXXX~YYYYYYYY",
+        isDebug = BuildConfig.DEBUG
+    ) { success ->
+        // The bundled defaults are already active even if the fetch failed or timed out.
+        NavigationFlowManager.getInstance(this).loadFromRemoteConfig()   // only if you use navigation
+    }
+```
+
+You then handle consent and updates yourself — see
+[Analytics & Consent](/xml-sdk/analytics-consent) and
+[In-App Updates](/xml-sdk/app-update).
 
 ### Alternative: manual configuration (no Remote Config)
 
@@ -238,29 +286,26 @@ adMobManager.initialize(appId = "ca-app-pub-XXXXXXXX~YYYYYYYY") {
 
 ## 4. Consent (UMP)
 
-Gather consent before loading ads, from your launcher `Activity`:
+The [startup flow](/xml-sdk/startup-flow) handles consent for you: it asks Google
+whether a form is needed, loads it under a timeout, shows it, and carries on whatever
+the outcome. Without it, use `AdsConsentManager` directly:
 
 ```kotlin
-private var adsConsentManager: AdsConsentManager? = null
-
-private fun initConsent() {
-    adsConsentManager = AdsConsentManager(this)
-    val canRequestAds = adsConsentManager?.canRequestAds
-    if (canRequestAds == false) {
-        adsConsentManager?.showGDPRConsent(this, BuildConfig.DEBUG) { consentError ->
-            if (consentError != null) {
-                Log.e("Consent", "Error during consent gathering: ${consentError.message}")
-            }
-            // proceed to initialize ads either way
-        }
-    } else {
-        // proceed to initialize ads
+val consent = AdsConsentManager(this)
+consent.requestConsentInfo(this, isTest = false) { _ ->
+    consent.showFormIfRequired(this, loadTimeoutMs = 8_000L) { outcome ->
+        // initialize ads either way
     }
 }
 ```
 
+The full API, the test switch and the older methods are on
+[Analytics & Consent](/xml-sdk/analytics-consent).
+
 ## 5. You're set up — what's next
 
+- [Startup Flow](/xml-sdk/startup-flow) — Remote Config, update check and consent in one callback
 - [Ad Formats](/xml-sdk/ad-formats) — wire up each ad type at the spots your app needs them
 - [Navigation Configuration](/xml-sdk/navigation-configuration) — if this app has a splash → onboarding → main journey
-- [Analytics & Consent](/xml-sdk/analytics-consent) — event catalogue
+- [In-App Updates](/xml-sdk/app-update) — switch Play updates on or off from Remote Config
+- [Analytics & Consent](/xml-sdk/analytics-consent) — event catalogue and the consent API

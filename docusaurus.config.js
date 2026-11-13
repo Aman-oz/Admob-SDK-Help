@@ -86,6 +86,11 @@ const config = {
             label: 'Compose SDK',
           },
           {
+            to: '/changelog',
+            position: 'right',
+            label: 'Release notes',
+          },
+          {
             to: '/team',
             position: 'right',
             label: 'Team Access',
@@ -100,9 +105,13 @@ const config = {
             items: [
               {label: 'Overview', to: '/xml-sdk/overview'},
               {label: 'Getting Started', to: '/xml-sdk/getting-started'},
+              {label: 'Startup Flow', to: '/xml-sdk/startup-flow'},
+              {label: 'In-App Updates', to: '/xml-sdk/app-update'},
               {label: 'Ad Formats', to: '/xml-sdk/ad-formats'},
               {label: 'Remote Config', to: '/xml-sdk/remote-config'},
+              {label: 'Navigation', to: '/xml-sdk/navigation-configuration'},
               {label: 'Troubleshooting', to: '/xml-sdk/troubleshooting'},
+              {label: 'Release notes', to: '/changelog'},
             ],
           },
           {

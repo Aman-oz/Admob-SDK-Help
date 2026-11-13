@@ -133,6 +133,36 @@ adMobManager.bannerAdLoader.showAdaptiveBannerForPlacement(
 - **The medium rectangle is unaffected** — it's always 300×250 and has no `adSizeType`.
 - **Cached banners are matched by size type too.** A banner already cached for an ad unit is reused only if it was loaded with the *same* `adSizeType` and dimensions; asking for a different size type on the same ad unit loads a fresh ad rather than showing the wrong shape.
 
+## Banner caching
+
+Banners are loaded directly and kept in a small local cache keyed by ad unit ID, so
+calling a banner method again for the same ad unit reuses the live ad view instead of
+requesting another one.
+
+- A cached banner is reused until it is **older than `banner_ad_refresh_time`** — a
+  Remote Config value in seconds, default **15**. The next call after that destroys the
+  old view and requests a fresh banner.
+- Age is counted from when the banner **loaded**, and it is checked when you next call a
+  banner method. There is no background timer.
+- It is a cache lifetime, not an auto-refresh of a banner that is already on screen.
+- Set it from Remote Config (`banner_ad_refresh_time` in the
+  [pacing values](/xml-sdk/remote-config#pacing-values)), or in code:
+
+```kotlin
+adMobManager.setBannerAdRefreshTime(30_000L)   // milliseconds; 0 or less means the 15 s default
+```
+
+Remote Config applies it for you (it multiplies the seconds by 1000), so the setter is
+only for apps that don't use Remote Config.
+
+:::warning[Upgrading from 2.0.5 or earlier]
+Cached banners used to be kept for up to **four hours**. They are now reused for
+**15 seconds** by default, so a user moving between screens that share an ad unit
+triggers more banner requests than before. Raise `banner_ad_refresh_time` to reduce them,
+or lower it for fresher ads — it is a Remote Config value, so you can tune it without a
+release.
+:::
+
 ## Full API
 
 ```kotlin

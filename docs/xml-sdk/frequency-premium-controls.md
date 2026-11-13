@@ -38,6 +38,18 @@ If you're on [Remote Config](/xml-sdk/remote-config), the global `ads_enabled: f
 kill switch behaves the same way — it's the remote equivalent of premium, for
 suppressing ads without a release.
 
+Premium also reaches a few places that aren't ad calls:
+
+- **Navigation.** `premium` and `premium_offer` steps are **skipped** for premium users,
+  so a journey never shows a paywall to someone who already paid — see
+  [Navigation Configuration](/xml-sdk/navigation-configuration#skipping-rules). Remote
+  Config's `ads_enabled: false` marks the app as premium (`isPremium = true`), so it
+  skips those steps too.
+- **In-app updates ignore premium** (and `ads_enabled`) on purpose. A premium user still
+  gets update prompts — see [In-App Updates](/xml-sdk/app-update).
+- **Deferred ads init.** While `setDeferAdsInit(true)` is waiting for `initializeAds()`,
+  the automatic resume ads stay idle — see [Startup Flow](/xml-sdk/startup-flow#what-setdeferadsinit-does).
+
 ## Interstitial frequency — counter + time window
 
 Backed by `TimeManager` (tracks elapsed time since app start) and three
@@ -77,12 +89,14 @@ know what's actually being configured:
 | `openAdResumeTime` | `5` | `setOpenAdResumeTime` |
 | `interstitialAdMinTime` | `0` | `setInterstitialAdMinTime` |
 | `interstitialAdMaxTime` | `0` | `setInterstitialAdMaxTime` |
-| `nativeAdRefreshTime` | `0` | `setNativeAdRefreshTime` |
+| `nativeAdRefreshTime` | `0` | `setNativeAdRefreshTime` (milliseconds); Remote Config's `native_ad_refresh_time` is in seconds |
+| `bannerAdRefreshTime` | `15000` (ms) | `setBannerAdRefreshTime`; Remote Config's `banner_ad_refresh_time` is in seconds |
 | `interstitialCounter` | `0` | `setInterstitialCounter` |
 | `shouldShowResumeAd` | `true` | `setShouldShowResumeAd` |
 | `appOpenAdStartId` | `""` | `setAppOpenAdStartId` |
 | `appOpenAdResumeId` | `""` | `setAppOpenAdResumeId` |
 | `isSplash` | `false` | `setSplash` |
+| `awaitingAdsInit` | `false` | set by `setDeferAdsInit(true)` until ads are initialized; keeps the resume-ad handlers idle |
 | `adsEnabled` | `true` | driven by Remote Config's `ads_enabled`, not a direct setter |
 | `adConfig` | — | the active `AdEnvironmentConfig` once Remote Config is applied |
 

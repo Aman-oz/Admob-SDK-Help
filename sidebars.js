@@ -13,6 +13,8 @@ const sidebars = {
   xmlSidebar: [
     'xml-sdk/overview',
     'xml-sdk/getting-started',
+    'xml-sdk/startup-flow',
+    'xml-sdk/app-update',
     {
       type: 'category',
       label: 'Ad Formats',

@@ -6,11 +6,12 @@ title: Overview
 # Ozi AdMob SDK — Overview
 
 `com.ozi.admob:ads` is the one library every Ozi app uses for monetization: ads,
-remote-driven configuration, and the splash → onboarding → main navigation flow.
+remote-driven configuration, in-app updates, a one-call startup flow, and the
+splash → onboarding → main navigation flow.
 It exists so that pattern lives in **one place** instead of being re-implemented
 (and drifting) app by app.
 
-This site documents the **Next-Gen line** — the current `2.0.5`+ releases,
+This site documents the **Next-Gen line** — the current `2.1.2`+ releases,
 built on Google's [GMA Next-Gen SDK](https://developers.google.com/ad-manager/mobile-ads-sdk/android/next-gen)
 (`com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk`, currently
 **`1.5.0`**) rather than the legacy `com.google.android.gms:play-services-ads`.
@@ -33,6 +34,9 @@ AdMobManager  ──── one singleton per process, owns every ad loader
    ├── bannerAdLoader         (adaptive / medium-rect / collapsible)
    ├── nativeAdLoader         (GMA Next-Gen NativeAdPreloader)
    │
+   ├── appUpdate              Google Play in-app updates (Remote Config controlled)
+   ├── startup                Remote Config → update → consent → one callback
+   │
    ├── AdController           shared mutable config (timings, ad unit IDs, splash flag)
    └── AdsRemoteConfig        Firebase Remote Config wrapper (lazy)
 ```
@@ -49,12 +53,19 @@ reimplementing ad caching.
   pacing + native ad colors). Change a value in the console and every app
   picks it up on its next fetch — no release needed. See
   [Remote Config](/xml-sdk/remote-config).
-- **The splash → language → onboarding → main/premium journey** is also
-  config-driven, from one `navigation_configuration` parameter — see
+- **The splash → language → onboarding → premium → main journey** is also
+  config-driven: an ordered screen list per launch type in one
+  `app_navigation_configuration` parameter, so moving a screen needs no release — see
   [Navigation Configuration](/xml-sdk/navigation-configuration).
+- **App start is one call.** Remote Config, the update check and the consent form run
+  as a single sequence and hand control back to your app — see
+  [Startup Flow](/xml-sdk/startup-flow).
+- **In-app updates are a Remote Config switch** (`app_update_type`) — see
+  [In-App Updates](/xml-sdk/app-update).
 - **The public API is deliberately stable.** Method names, parameters, and
-  placement keys don't change between patch releases, so upgrading is a
-  version-number bump, not a rewrite.
+  placement keys don't change between patch releases, so a patch upgrade is a
+  version-number bump. A minor release (like `2.1`) can carry changes that need a
+  small edit; they are always listed in the upgrade notes below.
 
 ## Where things live
 
@@ -69,6 +80,8 @@ reimplementing ad caching.
 | Native | `NativeAdLoader`, `NativeAdBuilder` | `domain.ads.native_ad` |
 | Remote Config | `AdsRemoteConfig`, `AdConfigParser` | `domain.remote_config` |
 | Navigation | `NavigationFlowManager`, `NavigationHost` | `domain.navigation` |
+| Startup flow | `StartupFlow`, `StartupOptions`, `StartupResult` | `domain.startup` |
+| In-app updates | `AppUpdateController`, `AppUpdateUiModel` | `domain.app_update` |
 | Consent (UMP) | `AdsConsentManager` | `domain.consent` |
 | Analytics | `AdsAnalytics`, `AnalyticsManager` | `domain.analytics`, `domain.utils` |
 
@@ -89,24 +102,43 @@ first:
    race each other.
 4. **`setSplash(true)` must be turned back off** in the splash screen's
    `onDestroy`, or automatic resume ads never fire again.
+5. **`setDeferAdsInit(true)` needs an `initializeAds()` call.** With it, ads are not
+   initialized until your app does it — normally in the startup callback, whatever
+   the consent result. See [Startup Flow](/xml-sdk/startup-flow#what-setdeferadsinit-does).
 
-## What's new in 2.0.5
+## What's new in 2.1.2
+
+Everything since `2.0.5`. Older versions are in the [release notes](/changelog).
 
 | Change | Details |
 |---|---|
-| **Three banner size types** | Adaptive and collapsible banners take a new `adSizeType` (`LARGE_ANCHORED` default, `ANCHORED_ADAPTIVE`, `INLINE_ADAPTIVE`) — see [Banner Ads](/xml-sdk/ad-formats/banner#banner-size-types) |
-| **Rewarded ad caching fixed** | One request per ad unit, ever — loaded/loading state is tracked per ad unit, so `loadAd` then `loadAndShowAd` shows the warm ad instead of loading a second one — see [Rewarded Ads](/xml-sdk/ad-formats/rewarded#how-loading-and-caching-work) |
-| **Next-Gen SDK `1.3.1` → `1.5.0`** | The underlying `ads-mobile-sdk` moved up two minor versions; the exclude of the legacy `play-services-ads` is unchanged |
+| **Startup flow** | One call runs Remote Config → update check → consent form → callback. New `ads.startup.start(...)`, `setDeferAdsInit(true)` and `initializeAds()` — see [Startup Flow](/xml-sdk/startup-flow) |
+| **In-app updates** | Switch Play updates on from Remote Config with `app_update_type` (`0` flexible, `1` immediate). Background and manual checks, a customizable dialog — see [In-App Updates](/xml-sdk/app-update) |
+| **Consent reworked** | Never stops the ads flow: granted, declined, timed out or failed, the app carries on. The form load is capped and a late form is never shown — see [Analytics & Consent](/xml-sdk/analytics-consent) |
+| **Navigation = journey lists** | `app_navigation_configuration` (`config_version` 2): an ordered screen list per launch type, an ad before any step, a separate `premium_offer` screen, and a default JSON asset — see [Navigation Configuration](/xml-sdk/navigation-configuration) |
+| **Banner caching** | A loaded banner is reused for `banner_ad_refresh_time` seconds (default 15; it used to be four hours) — see [Banner Ads](/xml-sdk/ad-formats/banner#banner-caching) |
 
-Upgrading from `2.0.4` is a version-number bump for Kotlin code — the default
-banner size is the same one `2.0.4` already used, so existing banner calls
-render exactly as before. The one exception is **Java** code that passes an
-`onAdLoaded` listener to a banner method: it must now also pass the two new
-parameters first (see
-[Banner Ads → Full API](/xml-sdk/ad-formats/banner#full-api)). Because the Next-Gen SDK itself moved, re-run the runtime
-mediation check from
-[Getting Started → Picking mediation adapter versions](/xml-sdk/getting-started#picking-mediation-adapter-versions)
-once after upgrading, to confirm every adapter still initializes.
+### Upgrading from 2.0.5
+
+Nothing needs to change unless it is on this list. The startup flow, in-app updates
+and the consent methods are opt-in.
+
+1. **Navigation — the one breaking change.**
+   - The SDK now reads **`app_navigation_configuration`**, not `navigation_configuration`.
+     Create the new parameter in the Firebase console (copy `navigation_config_template.json`),
+     and add a `default_navigation_configuration.json` asset passed with
+     `setNavigationConfigurationAsset`. Keep the old parameter while older app versions
+     are still in use.
+   - If you built `NavigationConfig(...)`, `SplashConfig(firstLaunchFlow = …)`,
+     `OnboardingConfig` or `PremiumConfig` **in code**, it no longer compiles. Use the default
+     JSON file, or the new `Flows` / `FlowStep` shape. The old-to-new mapping is in
+     [Navigation Configuration → Migrating from version 1](/xml-sdk/navigation-configuration#migrating-from-version-1).
+   - A `NavigationHost` you already wrote, in Kotlin or Java, keeps compiling: `openPremiumOffer` has a default that calls `openPremium`.
+2. **Banners are cached for 15 s instead of 4 hours**, so apps that move between screens
+   sharing a banner ad unit make more banner requests. Tune `banner_ad_refresh_time`.
+3. **A new transitive dependency**, `com.google.android.play:app-update:2.1.0`, comes in with
+   the SDK. You don't declare it; nothing is added to the manifest.
+4. The Next-Gen SDK is still `1.5.0`, as in `2.0.5`.
 
 ## Next steps
 
@@ -114,3 +146,5 @@ once after upgrading, to confirm every adapter still initializes.
 - Already integrated, adding a format → [Ad Formats](/xml-sdk/ad-formats)
 - Changing ad IDs/pacing without a release → [Remote Config](/xml-sdk/remote-config)
 - Wiring the splash/onboarding journey → [Navigation Configuration](/xml-sdk/navigation-configuration)
+- Remote Config, update and consent in one call → [Startup Flow](/xml-sdk/startup-flow)
+- Offering Play updates → [In-App Updates](/xml-sdk/app-update)

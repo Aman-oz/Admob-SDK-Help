@@ -140,6 +140,18 @@ Note the two `show*IfAvailable` methods take **only the callback**, no
 `Activity`/`Context` — the loader already tracks the current foreground
 activity itself via the lifecycle observer.
 
+## With the startup flow and navigation
+
+- **Deferred ads init.** If you use `setDeferAdsInit(true)` (see
+  [Startup Flow](/xml-sdk/startup-flow)), the automatic resume-ad handlers stay idle
+  until `initializeAds()` has run, so the first foreground after launch never tries to
+  load or show a resume ad before the ads SDK is initialized. Load the start ad inside
+  the `initializeAds` completion callback, not before.
+- **Journey steps.** In [Navigation Configuration](/xml-sdk/navigation-configuration),
+  `ad_before: "app_open"` or `"app_open_then_interstitial"` calls your host's
+  `showAppOpenAd`. The pattern above (use a preloaded ad, else load once and show) is
+  what that method should do, and it must always call its continuation.
+
 ## Relevant `AdController` knobs
 
 | Setter | `AdController` field | Default |

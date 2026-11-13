@@ -13,7 +13,7 @@ title: Troubleshooting
 3. Use test ad unit IDs in debug builds (below)
 4. Check logs: `adb logcat | grep "Monetization"`
 5. Verify the AdMob App ID in `AndroidManifest.xml` matches what you passed as `appId` to `initialize`/`initWithRemoteConfig`
-6. Confirm consent has been resolved (`canRequestAds`) before initializing ads
+6. Confirm the ads SDK was actually initialized. With `setDeferAdsInit(true)`, `initializeAds()` must have run — look for `Next-Gen SDK initialized` in Logcat (see [Startup Flow](/xml-sdk/startup-flow#what-setdeferadsinit-does))
 
 ## Common issues
 
@@ -33,10 +33,53 @@ title: Troubleshooting
 - Network unavailable
 - Inline adaptive banner (`adSizeType = INLINE_ADAPTIVE`) clipped or leaving a gap — the container has a fixed height; use `wrap_content`, since the real height is only known after load. See [Banner size types](/xml-sdk/ad-formats/banner#banner-size-types)
 - A collapsible banner shows at the large-anchored size when you asked for inline — expected: collapsible banners fall back to `LARGE_ANCHORED` for `INLINE_ADAPTIVE` (check Logcat for the warning)
+- The same banner comes back instantly for a few seconds — that is the cache: a loaded banner is reused until it is older than `banner_ad_refresh_time` (default 15 s). See [Banner caching](/xml-sdk/ad-formats/banner#banner-caching)
 
 #### Rewarded ad loads twice, or the button tap waits
 - Since `2.0.5` a rewarded ad is never requested twice for one ad unit — if you still see two requests, check they aren't for **different placements** resolving to different ad unit IDs
 - A tap that "waits" is `loadAndShowAdForPlacement` joining a load already in flight (capped by `timeoutMillis`, or 20s with none) — use `isAdLoadingForPlacement` to confirm. See [Rewarded Ads → How loading and caching work](/xml-sdk/ad-formats/rewarded#how-loading-and-caching-work)
+
+#### Ads never initialize after adopting the startup flow
+- `setDeferAdsInit(true)` is set but nothing calls `initializeAds()` — it must be called in the startup callback, in every case (see [Startup Flow](/xml-sdk/startup-flow#what-setdeferadsinit-does))
+- The startup callback never ran — filter Logcat for `StartupFlow` and look for the final `startup: done` line. A splash that is destroyed mid-flow re-attaches on the next `start`
+- `initializeAds()` threw `IllegalStateException` — `initWithRemoteConfig(appId, …)` was never called, so the SDK has no app ID; call it first or use `initialize(appId)`
+
+#### The startup flow runs on defaults (`remoteConfigFetched = false`)
+- `startup.start(...)` ran before `initWithRemoteConfig` — there was no fetch to wait for, so the step ended immediately
+- The fetch didn't finish within `remoteConfigTimeoutMs` (6 s), or Firebase isn't configured (no `google-services.json`). The SDK carries on with the cached or default values and applies the fetch when it lands
+- Reading the navigation config before the startup callback — it still holds the in-code defaults (not your default JSON file) until the config is loaded
+
+#### The consent form shows on every launch
+- `consentTestMode = true` in `StartupOptions`, or `isTest = true` in a manual call, resets the saved consent and forces an EEA test setup on every run. Remove it for real builds
+
+#### The consent form never shows
+- Google says no form is required (the user is outside the EEA/UK, or already answered). Check `result.consentStatus`: `NOT_REQUIRED` or `OBTAINED` is normal
+- `show_consent` is `false` in `app_navigation_configuration`, or `askConsent = false` — the outcome is `SKIPPED`
+- The form couldn't load within `consentFormLoadTimeoutMs` (8 s) — the outcome is `TIMED_OUT`, and the form is never shown late
+
+#### The in-app update never appears
+- The build wasn't installed by Google Play. `adb`, Android Studio and sideloaded builds always report "no update" — see [In-App Updates → Testing a real update](/xml-sdk/app-update#testing-a-real-update)
+- `app_update_type` is `-1` or missing, or it's set in the wrong block — a release build reads `release_ad_configuration`
+- Play's `versionCode` isn't higher than the installed one, or the two builds are signed with different keys
+- Another update dialog was already on screen (the call is ignored and reports `false`)
+- In the startup flow `updateOutcome = FAILED` means Play didn't answer within 5 s. Filter Logcat for `AppUpdateController`
+
+#### Navigation doesn't follow the JSON I edited
+- You edited `navigation_configuration`. Version `2.1.x` reads **`app_navigation_configuration`**, and the old key is ignored
+- Use `config_version` `2`; a value of `1` or lower is rejected. A version-1 value (the `*_flow` integers) is rejected, and `nav.logConfig()` shows `source: DEFAULT JSON …` or `APP DEFAULT (invalid JSON)` instead of `REMOTE CONFIG`
+- Release builds cache Remote Config for 12 h, so a console change can take that long to arrive
+- A malformed or version-1 fetched value falls back to the default JSON asset if that parses, otherwise to the in-code config (`source: APP DEFAULT (invalid JSON)`). It is logged, not silent — look for the `NavigationConfigParser` warning
+
+#### A journey skips a screen or opens it out of order
+- `premium` and `premium_offer` are skipped for premium users (`AdMobManager.isPremium`)
+- `language` and `onboarding` are skipped once done, unless the step sets `skip_if_done: false`
+- The step has `enabled: false`, or `screens.<screen>.<launch>.enabled` is `false`
+- A screen listed twice keeps only its first step; steps after `main` are never reached; an unknown screen name is logged and skipped
+- The first-launch list is used until **both** language and onboarding are done. Use `nav.resetLaunchState()` to retest
+
+#### A journey stalls on an ad step
+- Your `NavigationHost` didn't call the continuation. `showInterstitial` and `showAppOpenAd` must call `onComplete` in every case — shown, skipped, failed, premium
+- The interstitial is disabled or blocked: the placement's `enable` is `false`, or the step's point (`before_main`, `close_premium`, …) is in its `points` block-list. The continuation must still run
 
 #### Remote Config values look stale
 - Release builds cache Remote Config for 12h — uninstall/reinstall or wait out the cache during testing; debug builds fetch instantly (0s interval)
@@ -60,6 +103,10 @@ adb logcat | grep "BannerAdLoader"
 adb logcat | grep "NativeAd"
 adb logcat | grep "AppOpenAdLoader"
 adb logcat | grep "AdsRemoteConfig"
+adb logcat | grep "StartupFlow"
+adb logcat | grep "AppUpdateController"
+adb logcat | grep "AdsConsentManager"
+adb logcat | grep "NavigationFlowManager"
 ```
 
 ## Test ad unit IDs
